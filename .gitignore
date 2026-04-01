@@ -1,10 +1,19 @@
+# Python
+*.pyc
+*~
+__pycache__/
+.pytest_cache/
+htmlcov/
+.coverage
+
 # Django
 *.log
 *.pot
-*.pyc
-__pycache__/
 db.sqlite3
 db.sqlite3-journal
+media/
+staticfiles/
+static_root/
 
 # Environment
 .env
@@ -15,10 +24,15 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE/OS
+# IDE / OS
 .idea/
 .vscode/
 *.swp
-*~
 .DS_Store
-.sixth
+
+# Celery (nếu sau này có dùng)
+celerybeat-schedule
+celerybeat.pid
+
+# Docker (thư mục db gắn mount nếu có)
+postgres_data/
