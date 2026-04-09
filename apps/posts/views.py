@@ -52,7 +52,7 @@ class PostListCreateView(APIView):
         if category:
             qs = qs.filter(category__id=category)
         if tag:
-            qs = qs.filter(tag__slug=tag)
+            qs = qs.filter(tags__slug=tag)
         if author:
             qs = qs.filter(author__id=author)
 
@@ -80,10 +80,12 @@ class PostRelatedView(APIView):
         post = get_object_or_404(Post, pk=pk, is_deleted=False)
 
         try:
-            limit = min(int(request.query_params.get('limit', 4)), 10)
+            limit = int(request.query_params.get('limit', 4))
+            if not (4 <= limit <= 10):
+                raise ValueError()
         except ValueError:
             return Response({
-                "detail": "limit must be a integer, from 4 to 10"
+                "detail": "limit must be an integer, from 4 to 10"
             }, status=status.HTTP_400_BAD_REQUEST)
 
         related_qs = (

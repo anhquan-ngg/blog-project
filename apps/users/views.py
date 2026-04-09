@@ -35,7 +35,7 @@ class RegisterView(APIView):
                         value={
                             "username": ["A user with that username already exists."],
                             "email": ["This email is already registered."],
-                            "password": ["Password must be 8–50 characters and contain at least one letter and one digit."],
+                            "password": ["Password must be 8-50 characters and contain at least one letter and one digit."],
                             "non_field_errors": ["Passwords do not match."]
                         }
                     )

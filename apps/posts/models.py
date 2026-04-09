@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from django.db.models import Index
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.indexes import GinIndex
 
 class Post(models.Model):
     author = models.ForeignKey(
@@ -29,11 +31,15 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # tsvector for full text search
+    search_vector = SearchVectorField(null=True, blank=True)
+
     class Meta:
         db_table = 'posts'
         indexes = [
             Index(fields=['author', 'created_at'], name='idx_posts_author_created'),
             Index(fields=['category', 'created_at'], name='idx_posts_category_created'),
+            GinIndex(fields=['search_vector'], name='idx_posts_search_vector'),
         ]
 
     def __str__(self):

@@ -9,7 +9,11 @@ def sync_post_images(post) -> None:
     """
     blocks = post.content or []
     image_blocks = [block for block in blocks if block.get("type") == "image"]
-    image_file_ids = [block.get("data", {}).get("file_id") for block in image_blocks]
+    image_file_ids = [
+        block.get("data", {}).get("file_id") 
+        for block in image_blocks 
+        if block.get("data", {}).get("file_id") is not None
+    ]
     
     # Delete images that are not in the content
     PostImages.objects.filter(post=post).exclude(file_id__in=image_file_ids).delete()
@@ -17,6 +21,8 @@ def sync_post_images(post) -> None:
     # Upsert images that are in the content
     for index, block in enumerate(image_blocks):
         file_id = block.get("data", {}).get("file_id")
+        if file_id is None:
+            continue
         caption = block.get("data", {}).get("caption")
         PostImages.objects.update_or_create(
             post=post,
@@ -26,8 +32,8 @@ def sync_post_images(post) -> None:
                 "order": index,
             }
         )
-        File.objects.filter(id=file_id).update(entity_type='post', entity_id=post.id)
+        File.objects.filter(id=file_id).update(entity_type='post', entity_id=post.id)    
+
+
     
-
-
     
