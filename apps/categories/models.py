@@ -3,7 +3,7 @@ from django.db.models import Index
 from django.utils.text import slugify
 
 class Category(models.Model): 
-    parent_id = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    parent_id = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, db_column="parent_id")
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=255, unique=True, blank = True)
     is_deleted = models.BooleanField(default=False)

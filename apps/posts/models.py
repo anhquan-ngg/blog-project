@@ -11,11 +11,17 @@ class Post(models.Model):
     category = models.ForeignKey(
         'categories.Category',
         on_delete=models.CASCADE,
+        blank=False,
+        related_name='posts',
+    )
+    tags = models.ManyToManyField(
+        'tags.Tag',
+        through='PostTags',
         blank=True,
         related_name='posts',
     )
     title = models.CharField(max_length=200)
-    content = models.TextField()
+    content = models.JSONField()
     likes_count = models.IntegerField(default=0)
     bookmarks_count = models.IntegerField(default=0)
     is_deleted = models.BooleanField(default=False)
