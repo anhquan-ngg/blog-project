@@ -2,6 +2,9 @@ from django.db import models
 from django.conf import settings
 from django.db.models import Index
 from .services import delete_image_from_s3
+import logging
+
+logger = logging.getLogger(__name__)
 
 class FileStatus(models.TextChoices):
     ACTIVE = 'active'
@@ -25,8 +28,12 @@ class File(models.Model):
     def __str__(self):
         return f'{self.uploaded_by} uploaded {self.url}'
     
-    def delete(self, *arg, **kwargs):
+    def delete(self, *args, **kwargs):
         # Delete image from S3 then soft delete
-        delete_image_from_s3(self.s3_key)
+        try:
+            delete_image_from_s3(self.s3_key)
+        except Exception as e:
+            logger.error(f"Failed to delete image from S3 (Key: {self.s3_key}): {e}", exc_info=True)
+            
         self.status = FileStatus.INACTIVE
         self.save(update_fields=['status'])
