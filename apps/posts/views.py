@@ -68,15 +68,37 @@ class PostListCreateView(APIView):
         author = request.query_params.get('author')
         ordering = request.query_params.get('ordering', request.query_params.get('sort', '-created_at'))
         
+        ALLOWED_ORDERING = ['created_at', '-created_at', 'likes_count', '-likes_count', 'bookmarks_count', '-bookmarks_count']
+
         if category:
+            try:
+                category = int(category)
+            except ValueError:
+                return Response({"category": ["category must be an integer."]}, status=status.HTTP_400_BAD_REQUEST)
+            from apps.categories.models import Category
+            if not Category.objects.filter(id=category, is_deleted=False).exists():
+                return Response({"category": [f"Category with id {category} does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
             qs = qs.filter(category__id=category)
+            
         if tag:
             qs = qs.filter(tags__slug=tag)
+            
         if author:
+            try:
+                author = int(author)
+            except ValueError:
+                return Response({"author": ["author must be an integer."]}, status=status.HTTP_400_BAD_REQUEST)
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            if not User.objects.filter(id=author).exists():
+                return Response({"author": [f"User with id {author} does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
             qs = qs.filter(author__id=author)
 
-        qs = _annotate_user_actions(qs, request.user)
+        if ordering and ordering not in ALLOWED_ORDERING:
+            return Response({"ordering": [f"Invalid ordering. Allowed values are: {', '.join(ALLOWED_ORDERING)}"]}, status=status.HTTP_400_BAD_REQUEST)
+
         qs = qs.order_by(ordering)
+        qs = _annotate_user_actions(qs, request.user)
         
         # Pagination
         paginator = CustomLimitOffsetPagination()
@@ -308,6 +330,15 @@ class PostSearchView(APIView):
             return Response({"q": ["Search query must be at least 2 characters."]}, status=status.HTTP_400_BAD_REQUEST)
         
         category_id = request.query_params.get('category')
+        
+        if category_id:
+            try:
+                category_id = int(category_id)
+            except ValueError:
+                return Response({"category": ["category must be an integer."]}, status=status.HTTP_400_BAD_REQUEST)
+            from apps.categories.models import Category
+            if not Category.objects.filter(id=category_id, is_deleted=False).exists():
+                return Response({"category": [f"Category with id {category_id} does not exist."]}, status=status.HTTP_400_BAD_REQUEST)
         
         qs = Post.objects.filter(is_deleted=False).select_related('author', 'category').prefetch_related(
             'tags',

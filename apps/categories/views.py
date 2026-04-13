@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework import serializers
 from .serializers import CategorySerializer
 from .models import Category
+from apps.posts.models import Post
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, inline_serializer
@@ -180,7 +181,7 @@ class CategoryViewSet(ViewSet):
                     OpenApiExample(
                         name="Has posts",
                         summary="Category has posts",
-                        value={"non_field_errors": ["Cannot delete category 'Backend Development' because it has 28 post(s)."]}
+                        value={"non_field_errors": ["Cannot delete category 'Backend Development' because it (or its subcategories) has 28 post(s)."]}
                     )
                 ]
             ),
@@ -221,13 +222,16 @@ class CategoryViewSet(ViewSet):
         if category.is_deleted:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check if category has any posts
-        posts_count = category.posts.filter(is_deleted=False).count()
+        # Get category and its children IDs
+        category_ids = [category.id] + list(Category.objects.filter(parent_id=category.id).values_list('id', flat=True))
+
+        # Check if category or any subcategory has any posts
+        posts_count = Post.objects.filter(category_id__in=category_ids, is_deleted=False).count()
         if posts_count > 0:
             return Response(
                 {
                     "non_field_errors": [
-                        f"Cannot delete category '{category.name}' because it has {posts_count} post(s)."
+                        f"Cannot delete category '{category.name}' because it (or its subcategories) has {posts_count} active post(s)."
                     ]
                 }, status=status.HTTP_400_BAD_REQUEST)
         now = timezone.now()
