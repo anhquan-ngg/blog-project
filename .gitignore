@@ -32,3 +32,12 @@ venv.bak/
 .vscode/
 *.swp
 .DS_Store
+
+# Agents
+.tmp/
+*.md
+skill-creator/
+# execution/
+# directives/
+
+

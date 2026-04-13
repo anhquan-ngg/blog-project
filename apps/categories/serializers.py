@@ -7,10 +7,13 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'slug', 'posts_count', 'parent_id', 'created_at']
-        read_only_fields = ['id', 'posts_count', 'created_at']
+        read_only_fields = ['id', 'slug', 'posts_count', 'created_at']
 
     def validate_name(self, value: str) -> str:
-        if Category.objects.filter(name = value, is_deleted = False).exists():
+        queryset = Category.objects.filter(name = value, is_deleted = False)
+        if self.instance:
+            queryset = queryset.exclude(id = self.instance.id)
+        if queryset.exists():
             raise serializers.ValidationError("Category with this name already exists.")
         return value
 
