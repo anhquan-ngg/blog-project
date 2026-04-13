@@ -1,32 +1,30 @@
-﻿# UC37 — Update Post Tags
+# [DEPRECATED] UC37 — Update Post Tags
 
-**Endpoint:** `PUT /api/posts/{id}/tags/`  
+**Endpoint:** ~~`PUT /api/posts/{id}/tags/`~~ (Đã bị loại bỏ)  
 **Role:** User (owner only)  
 **Last Updated:** 2026-03-27  
-**Status:** Ready for implementation
+**Status:** Deprecated
 
 ---
 
 ## 1. Overview
 
-Thay thế toàn bộ danh sách tag của bài viết bằng danh sách mới.  
-Chỉ chủ bài viết mới được thao tác.  
-Khác với UC36 (chỉ append) — UC37 dùng `SET` để replace hoàn toàn.  
-Truyền `tag_ids: []` để xóa toàn bộ tag khỏi bài.
+> [!WARNING]
+> Tính năng này hiện tại đã không còn cung cấp Endpoint riêng. Việc cập nhật trực tiếp tags (replace tất cả tags) được gộp chung vào UC10 (Update Post) qua `PATCH /api/posts/{id}/` với payload chứa thuộc tính `tags: [array_of_tag_ids]`.
 
 ---
 
 ## 2. Business Rules
 
-| #   | Rule                                                                         |
-| --- | ---------------------------------------------------------------------------- |
-| BR1 | Yêu cầu token — chỉ user đã đăng nhập mới gọi được                           |
-| BR2 | Chỉ `author` của bài mới được cập nhật tag → `403` nếu không                |
-| BR3 | Bài viết phải tồn tại và `is_deleted=False` → `404` nếu không               |
-| BR4 | `tag_ids` là danh sách ID các tag đã tồn tại — tag không tồn tại → `400`     |
-| BR5 | Replace toàn bộ: xóa tất cả `post_tags` cũ, thêm mới theo `tag_ids`         |
-| BR6 | `tag_ids: []` hợp lệ — xóa toàn bộ tag khỏi bài                             |
-| BR7 | Trả về `200 OK` kèm danh sách tag mới của bài                                |
+| #   | Rule                                                                     |
+| --- | ------------------------------------------------------------------------ |
+| BR1 | Yêu cầu token — chỉ user đã đăng nhập mới gọi được                       |
+| BR2 | Chỉ `author` của bài mới được cập nhật tag → `403` nếu không             |
+| BR3 | Bài viết phải tồn tại và `is_deleted=False` → `404` nếu không            |
+| BR4 | `tag_ids` là danh sách ID các tag đã tồn tại — tag không tồn tại → `400` |
+| BR5 | Replace toàn bộ: xóa tất cả `post_tags` cũ, thêm mới theo `tag_ids`      |
+| BR6 | `tag_ids: []` hợp lệ — xóa toàn bộ tag khỏi bài                          |
+| BR7 | Trả về `200 OK` kèm danh sách tag mới của bài                            |
 
 ---
 
@@ -72,14 +70,13 @@ Content-Type: application/json
 
 ### Body Parameters
 
-| Field     | Type          | Required | Mô tả                                        |
-| --------- | ------------- | -------- | -------------------------------------------- |
-| `tag_ids` | array[integer]| **Yes**  | Danh sách ID tag mới. `[]` để xóa toàn bộ tag |
+| Field     | Type           | Required | Mô tả                                         |
+| --------- | -------------- | -------- | --------------------------------------------- |
+| `tag_ids` | array[integer] | **Yes**  | Danh sách ID tag mới. `[]` để xóa toàn bộ tag |
 
 ---
 
 ## 4. Processing Flow
-
 
 ---
 
@@ -87,12 +84,12 @@ Content-Type: application/json
 
 ### Tables Affected
 
-| Table       | Operation     | Note                                             |
-| ----------- | ------------- | ------------------------------------------------ |
-| `posts`     | SELECT        | Xác nhận bài tồn tại, `is_deleted=False`         |
-| `tags`      | SELECT        | Kiểm tra các `tag_id` tồn tại                    |
-| `post_tags` | DELETE        | Xóa toàn bộ tag cũ của bài                       |
-| `post_tags` | INSERT        | Thêm mới theo danh sách `tag_ids`                |
+| Table       | Operation | Note                                     |
+| ----------- | --------- | ---------------------------------------- |
+| `posts`     | SELECT    | Xác nhận bài tồn tại, `is_deleted=False` |
+| `tags`      | SELECT    | Kiểm tra các `tag_id` tồn tại            |
+| `post_tags` | DELETE    | Xóa toàn bộ tag cũ của bài               |
+| `post_tags` | INSERT    | Thêm mới theo danh sách `tag_ids`        |
 
 ### Query (Django ORM)
 
@@ -179,22 +176,22 @@ return post.tags.all().order_by("name")
 
 ## 7. Error Reference
 
-| HTTP  | Nguyên nhân                          | Cách fix                                   |
-| ----- | ------------------------------------ | ------------------------------------------ |
-| `400` | Field `tag_ids` bị thiếu             | Truyền `tag_ids` (có thể là `[]`)           |
-| `400` | Có tag ID không tồn tại              | Kiểm tra tag ID qua UC35                   |
-| `401` | Thiếu token                          | Thêm header `Authorization: Token <token>` |
-| `403` | Không phải chủ bài                   | Chỉ `author` của bài mới được sửa tag      |
-| `404` | Bài không tồn tại hoặc đã bị xóa     | Kiểm tra `id` bài viết                     |
-| `500` | Lỗi database                         | Kiểm tra kết nối DB, xem server log        |
+| HTTP  | Nguyên nhân                      | Cách fix                                   |
+| ----- | -------------------------------- | ------------------------------------------ |
+| `400` | Field `tag_ids` bị thiếu         | Truyền `tag_ids` (có thể là `[]`)          |
+| `400` | Có tag ID không tồn tại          | Kiểm tra tag ID qua UC35                   |
+| `401` | Thiếu token                      | Thêm header `Authorization: Token <token>` |
+| `403` | Không phải chủ bài               | Chỉ `author` của bài mới được sửa tag      |
+| `404` | Bài không tồn tại hoặc đã bị xóa | Kiểm tra `id` bài viết                     |
+| `500` | Lỗi database                     | Kiểm tra kết nối DB, xem server log        |
 
 ---
 
 ## 8. Related Files
 
-| File                                                  | Mô tả                              |
-| ----------------------------------------------------- | ---------------------------------- |
-| [UC36 — Add Tag to Post](uc36-add-tag-to-post.md)     | Chỉ append tag, không replace      |
-| [UC35 — View Tag List](uc35-view-tags.md)             | Lấy danh sách tag ID               |
-| [UC10 — Update Post](uc10-update-post.md)             | Cập nhật bài (bao gồm tags)        |
-| [README](../README.md)                                | API Documentation Index            |
+| File                                              | Mô tả                         |
+| ------------------------------------------------- | ----------------------------- |
+| [UC36 — Add Tag to Post](uc36-add-tag-to-post.md) | Chỉ append tag, không replace |
+| [UC35 — View Tag List](uc35-view-tags.md)         | Lấy danh sách tag ID          |
+| [UC10 — Update Post](uc10-update-post.md)         | Cập nhật bài (bao gồm tags)   |
+| [README](../README.md)                            | API Documentation Index       |
