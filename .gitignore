@@ -5,6 +5,9 @@ __pycache__/
 .pytest_cache/
 htmlcov/
 .coverage
+apps/*/migrations/*.py
+apps/*/migrations/*.pyc
+!apps/*/migrations/__init__.py
 
 # Django
 *.log
@@ -29,10 +32,3 @@ venv.bak/
 .vscode/
 *.swp
 .DS_Store
-
-# Celery (nếu sau này có dùng)
-celerybeat-schedule
-celerybeat.pid
-
-# Docker (thư mục db gắn mount nếu có)
-postgres_data/

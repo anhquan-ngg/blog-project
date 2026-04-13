@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.db.models import Index
+from .services import delete_image_from_s3
 
 class FileStatus(models.TextChoices):
     ACTIVE = 'active'
@@ -11,10 +12,9 @@ class File(models.Model):
     url = models.URLField(max_length=200, null=False, blank=False)
     s3_key = models.CharField(max_length=200, null=False, blank=False)
     status = models.CharField(max_length=20, choices=FileStatus.choices, default=FileStatus.ACTIVE)
-    entity_id = models.IntegerField(null=False, blank=False)
-    entity_type = models.CharField(max_length=50, null=False, blank=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    entity_id = models.IntegerField(null=True, blank=True)
+    entity_type = models.CharField(max_length=50, null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'files'
@@ -23,4 +23,10 @@ class File(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.uploaded_by} uploaded {self.file}'
+        return f'{self.uploaded_by} uploaded {self.url}'
+    
+    def delete(self, *arg, **kwargs):
+        # Delete image from S3 then soft delete
+        delete_image_from_s3(self.s3_key)
+        self.status = FileStatus.INACTIVE
+        self.save(update_fields=['status'])

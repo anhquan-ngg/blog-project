@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'drf_spectacular',
+    'storages',
     'apps.categories',
     'apps.comments',
     'apps.files',
@@ -61,13 +63,22 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Blog API',
+    'DESCRIPTION': 'API documentation for Blog project',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 MIDDLEWARE = [
@@ -114,6 +125,16 @@ DATABASES = {
     }
 }
 
+# AWS S3
+AWS_ACCESS_KEY_ID     = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME    = os.environ.get('AWS_S3_REGION_NAME', 'ap-southeast-1')
+AWS_S3_FILE_OVERWRITE = False          # Không overwrite file trùng tên
+AWS_DEFAULT_ACL       = None           # Dùng bucket policy thay vì ACL
+
+# Dùng S3 làm default file storage (tuỳ chọn)
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
