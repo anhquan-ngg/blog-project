@@ -43,14 +43,14 @@ class PostListSerializer(serializers.ModelSerializer):
             'created_at',
         ]
 
-    def get_thumbnail(self, obj):
+    def get_thumbnail(self, obj) -> str | None:
         files = getattr(obj, "thumbnail_file", None)
         return files[0].file.url if files else None
     
-    def get_is_liked(self, obj):
+    def get_is_liked(self, obj) -> bool:
         return getattr(obj, "is_liked", False)
     
-    def get_is_bookmarked(self, obj):
+    def get_is_bookmarked(self, obj) -> bool:
         return getattr(obj, "is_bookmarked", False)
 
 class CreatePostSerializer(serializers.Serializer):
@@ -101,7 +101,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
             'updated_at'
         ]
 
-    def get_content(self, obj):
+    def get_content(self, obj) -> list:
         file_url_map = {
             pi.file_id: pi.file.url for pi in obj.post_images.all() # Prefetch image in view
         }
@@ -122,10 +122,10 @@ class PostDetailSerializer(serializers.ModelSerializer):
             resolved_content.append(block)
         return resolved_content
             
-    def get_is_liked(self, obj):
+    def get_is_liked(self, obj) -> bool:
         return getattr(obj, "is_liked", False)
     
-    def get_is_bookmarked(self, obj):
+    def get_is_bookmarked(self, obj) -> bool:
         return getattr(obj, "is_bookmarked", False)
 
 class UpdatePostSerializer(serializers.Serializer):
@@ -168,11 +168,7 @@ class RelatedPostSerializer(serializers.ModelSerializer):
             'created_at',
         ]
 
-    def get_thumbnail(self, obj):
+    def get_thumbnail(self, obj) -> str | None:
         files = getattr(obj, "thumbnail_file", None)
         return files[0].file.url if files else None
-
-        
-        
- 
-    
+

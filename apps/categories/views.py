@@ -232,8 +232,6 @@ class CategoryViewSet(ViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
         now = timezone.now()
 
-        
-
         # Soft delete all subcategories
         Category.objects.filter(parent_id=category.id).update(is_deleted=True, deleted_at=now)
         
