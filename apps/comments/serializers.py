@@ -80,7 +80,10 @@ class CreateCommentSerializer(serializers.Serializer):
             file_id = validated_data.pop('file_id', None)
             comment = Comment.objects.create(**validated_data)
             if file_id:
-                attach_file_to_comment(file_id, comment)
+                try:
+                    attach_file_to_comment(file_id, comment)
+                except ValueError as e:
+                    raise serializers.ValidationError({"file_id": str(e)}) from e
         return comment
 
 # ── Update input serializer ───────────────────────────────────────────────────
@@ -94,23 +97,24 @@ class UpdateCommentSerializer(serializers.Serializer):
         return value
 
     def update(self, instance, validated_data):
-        updated = False
-        if 'content' in validated_data:
-            instance.content = validated_data['content']
-            updated = True
+        with transaction.atomic():
+            save_fields = ['updated_at']
+            if 'content' in validated_data:
+                instance.content = validated_data['content']
+                save_fields.append('content')
 
-        if 'file_id' in validated_data:
-            new_file_id = validated_data['file_id']
-            # Detach old file from comment
-            detach_file_from_comment(instance)
-            # Link new file to comment
-            if new_file_id is not None:
-                attach_file_to_comment(new_file_id, instance)
-            updated = True
+            if 'file_id' in validated_data:
+                new_file_id = validated_data['file_id']
+                # Detach old file from comment
+                detach_file_from_comment(instance)
+                # Link new file to comment
+                if new_file_id is not None:
+                    try:
+                        attach_file_to_comment(new_file_id, instance)
+                    except ValueError as e:
+                        raise serializers.ValidationError({"file_id": str(e)}) from e
+            
+            if len(save_fields) > 1 or 'file_id' in validated_data:
+                instance.save(update_fields=save_fields)
 
-        save_fields = ['updated_at']
-        if 'content' in validated_data:
-            save_fields.append('content')
-        instance.save(update_fields=save_fields)
-
-        return instance
+            return instance

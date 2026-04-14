@@ -2,11 +2,16 @@ from drf_spectacular.types import OpenApiTypes
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, LoginSerializer
+from .serializers import RegisterSerializer, LoginSerializer, CurrentUserSerializer, UpdateCurrentUserSerializer
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiResponse, OpenApiExample
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiResponse, OpenApiExample, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
+from apps.posts.models import Post, Like, Bookmark
+from apps.posts.serializers import PostListSerializer
+from apps.posts.views import _thumbnail_prefetch, _annotate_user_actions
+from core.pagination import CustomLimitOffsetPagination
 
 class RegisterView(APIView):
     permission_classes = []
@@ -140,3 +145,166 @@ class LogoutView(APIView):
         if request.auth is not None:
             request.auth.delete()
         return Response({}, status=status.HTTP_204_NO_CONTENT)
+
+
+# ── GET /api/auth/me/  &  PATCH /api/auth/me/ ────────────────────────────────
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="View Current User Profile",
+        description="Returns profile information of the authenticated user.",
+        responses={
+            200: CurrentUserSerializer,
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="MeUnauthorized",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(
+                        name="Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            )
+        }
+    )
+    def get(self, request):
+        serializer = CurrentUserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Update Current User Profile",
+        description="Partially updates the authenticated user's profile. Only `first_name` and `last_name` can be changed (max 100 characters each).",
+        request=UpdateCurrentUserSerializer,
+        responses={
+            200: CurrentUserSerializer,
+            400: OpenApiResponse(
+                response=inline_serializer(
+                    name="MeUpdateValidationError",
+                    fields={
+                        "first_name": serializers.ListField(child=serializers.CharField(), required=False),
+                        "last_name": serializers.ListField(child=serializers.CharField(), required=False),
+                    }
+                ),
+                description="Bad Request",
+                examples=[
+                    OpenApiExample(
+                        name="Field too long",
+                        value={"first_name": ["Ensure this field has no more than 100 characters."]}
+                    )
+                ]
+            ),
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="MePatchUnauthorized",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(
+                        name="Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            )
+        }
+    )
+    def patch(self, request):
+        serializer = UpdateCurrentUserSerializer(
+            request.user, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(CurrentUserSerializer(request.user).data, status=status.HTTP_200_OK)
+
+
+# ── GET /api/me/liked/ ───────────────────────────────────────────────────────
+
+class LikedPostsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="View Liked Posts",
+        description="Returns a paginated list of posts the authenticated user has liked, ordered by most recently liked first.",
+        parameters=[
+            OpenApiParameter("limit", OpenApiTypes.INT, description="Number of items per page (max 100)", default=10),
+            OpenApiParameter("offset", OpenApiTypes.INT, description="Number of items to skip", default=0),
+        ],
+        responses={
+            200: PostListSerializer(many=True),
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="LikedUnauthorized",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(
+                        name="Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            )
+        }
+    )
+    def get(self, request):
+        qs = (
+            Post.objects.filter(likes__user=request.user, is_deleted=False)
+            .select_related("author", "category")
+            .prefetch_related("tags", _thumbnail_prefetch())
+            .order_by("-likes__created_at")
+        )
+        qs = _annotate_user_actions(qs, request.user)
+
+        paginator = CustomLimitOffsetPagination()
+        paginated_qs = paginator.paginate_queryset(qs, request)
+        serializer = PostListSerializer(paginated_qs, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+# ── GET /api/me/bookmarks/ ───────────────────────────────────────────────────
+
+class BookmarkedPostsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="View Bookmarked Posts",
+        description="Returns a paginated list of posts the authenticated user has bookmarked, ordered by most recently bookmarked first.",
+        parameters=[
+            OpenApiParameter("limit", OpenApiTypes.INT, description="Number of items per page (max 100)", default=10),
+            OpenApiParameter("offset", OpenApiTypes.INT, description="Number of items to skip", default=0),
+        ],
+        responses={
+            200: PostListSerializer(many=True),
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="BookmarksUnauthorized",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(
+                        name="Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            )
+        }
+    )
+    def get(self, request):
+        qs = (
+            Post.objects.filter(bookmarks__user=request.user, is_deleted=False)
+            .select_related("author", "category")
+            .prefetch_related("tags", _thumbnail_prefetch())
+            .order_by("-bookmarks__created_at")
+        )
+        qs = _annotate_user_actions(qs, request.user)
+
+        paginator = CustomLimitOffsetPagination()
+        paginated_qs = paginator.paginate_queryset(qs, request)
+        serializer = PostListSerializer(paginated_qs, many=True)
+        return paginator.get_paginated_response(serializer.data)

@@ -62,7 +62,6 @@ class CreatePostSerializer(serializers.Serializer):
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True, required=False, default=list) 
 
     def create(self, validated_data):
-        from django.db import transaction
         request = self.context.get("request")
 
         with transaction.atomic():
@@ -139,7 +138,6 @@ class UpdatePostSerializer(serializers.Serializer):
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True, required=False, default=list) 
 
     def update(self, instance, validated_data):
-        from django.db import transaction
         tags = validated_data.pop("tags", None)
         content_changed = "content" in validated_data
 
@@ -186,13 +184,15 @@ class PostLikeSerializer(serializers.Serializer):
             raise ValueError("Missing required context: 'request' and 'post'")
         
         with transaction.atomic():
-            like, created = Like.objects.get_or_create(user=request.user, post=post)
+            locked_post = Post.objects.select_for_update().get(pk=post.pk)
+            like, created = Like.objects.get_or_create(user=request.user, post=locked_post)
             if created:
                 Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") + 1)
                 is_liked = True
             else:
-                like.delete()
-                Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") - 1)
+                deleted_count, _ = like.delete()
+                if deleted_count > 0: # Check if the like was actually deleted
+                    Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") - 1)
                 is_liked = False
         post.refresh_from_db(fields=["likes_count"])
         return {
@@ -208,13 +208,15 @@ class PostBookmarkSerializer(serializers.Serializer):
             raise ValueError("Missing required context: 'request' and 'post'")
         
         with transaction.atomic():
-            bookmark, created = Bookmark.objects.get_or_create(user=request.user, post=post)
+            locked_post = Post.objects.select_for_update().get(pk=post.pk)
+            bookmark, created = Bookmark.objects.get_or_create(user=request.user, post=locked_post)
             if created:
                 Post.objects.filter(pk=post.pk).update(bookmarks_count=F("bookmarks_count") + 1)
                 is_bookmarked = True
             else:
-                bookmark.delete()
-                Post.objects.filter(pk=post.pk).update(bookmarks_count=F("bookmarks_count") - 1)
+                deleted_count, _ = bookmark.delete()
+                if deleted_count > 0:
+                    Post.objects.filter(pk=post.pk).update(bookmarks_count=F("bookmarks_count") - 1)
                 is_bookmarked = False
         post.refresh_from_db(fields=["bookmarks_count"])
         return {

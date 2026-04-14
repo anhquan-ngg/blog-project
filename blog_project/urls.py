@@ -5,12 +5,14 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView
 )
+from apps.users.urls import me_urlpatterns
 import sys
 import os
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.users.urls')),
+    path('api/me/', include(me_urlpatterns)),
     path('api/', include('apps.categories.urls')),
     path('api/files/', include('apps.files.urls')),
     path('api/posts/', include('apps.posts.urls')),
