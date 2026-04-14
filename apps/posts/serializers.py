@@ -175,4 +175,3 @@ class RelatedPostSerializer(serializers.ModelSerializer):
     def get_thumbnail(self, obj) -> str | None:
         files = getattr(obj, "thumbnail_file", None)
         return files[0].file.url if files else None
-
