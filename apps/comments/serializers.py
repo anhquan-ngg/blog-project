@@ -80,7 +80,10 @@ class CreateCommentSerializer(serializers.Serializer):
             file_id = validated_data.pop('file_id', None)
             comment = Comment.objects.create(**validated_data)
             if file_id:
-                attach_file_to_comment(file_id, comment)
+                try:
+                    attach_file_to_comment(file_id, comment)
+                except ValueError as e:
+                    raise serializers.ValidationError({"file_id": str(e)})
         return comment
 
 # ── Update input serializer ───────────────────────────────────────────────────
@@ -105,8 +108,10 @@ class UpdateCommentSerializer(serializers.Serializer):
             detach_file_from_comment(instance)
             # Link new file to comment
             if new_file_id is not None:
-                attach_file_to_comment(new_file_id, instance)
-            save_fields.append('file_id')
+                try:
+                    attach_file_to_comment(new_file_id, instance)
+                except ValueError as e:
+                    raise serializers.ValidationError({"file_id": str(e)})
         
         if len(save_fields) > 1 or 'file_id' in validated_data:
             instance.save(update_fields=save_fields)
