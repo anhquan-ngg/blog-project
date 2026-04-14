@@ -1,3 +1,5 @@
+from apps.posts.serializers import PostBookmarkSerializer
+from apps.posts.serializers import PostLikeSerializer
 from apps.posts.serializers import RelatedPostSerializer
 from apps.posts.serializers import UpdatePostSerializer
 from rest_framework.generics import get_object_or_404
@@ -11,7 +13,7 @@ from apps.posts.models import Post, Bookmark, Like, PostImages
 from apps.posts.serializers import PostListSerializer, CreatePostSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, exceptions
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, inline_serializer, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
@@ -361,3 +363,52 @@ class PostSearchView(APIView):
         serializer = PostListSerializer(paginated_qs, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+class PostLikeView(APIView):
+    serializer_class = PostLikeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def _get_post(self, pk):
+        try:
+            return Post.objects.get(pk=pk, is_deleted=False)
+        except Post.DoesNotExist:
+            raise exceptions.NotFound("Not found.") from None
+
+    @extend_schema(
+        summary="Like Post",
+        description="Likes a post. If the user has already liked the post, it will be unliked.",
+        responses={
+            200: PostLikeSerializer,
+            401: OpenApiResponse(description="Unauthorized"),
+            404: OpenApiResponse(description="Not found")
+        }
+    )
+    def post(self, request, pk):
+        post = self._get_post(pk)
+        serializer = self.serializer_class(context={"request": request, "post": post})
+        result = serializer.toggle_like()
+        return Response(result)
+
+class PostBookmarkView(APIView):
+    serializer_class = PostBookmarkSerializer
+    permission_classes = [IsAuthenticated]
+
+    def _get_post(self, pk):
+        try:
+            return Post.objects.get(pk=pk, is_deleted=False)
+        except Post.DoesNotExist:
+            raise exceptions.NotFound("Not found.") from None
+
+    @extend_schema(
+        summary="Bookmark Post",
+        description="Bookmarks a post. If the user has already bookmarked the post, it will be unbookmarked.",
+        responses={
+            200: PostBookmarkSerializer,
+            401: OpenApiResponse(description="Unauthorized"),
+            404: OpenApiResponse(description="Not found")
+        }
+    )
+    def post(self, request, pk):
+        post = self._get_post(pk)
+        serializer = self.serializer_class(context={"request": request, "post": post})
+        result = serializer.toggle_bookmark()
+        return Response(result)

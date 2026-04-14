@@ -1,3 +1,5 @@
+from apps.posts.views import PostBookmarkView
+from apps.posts.views import PostLikeView
 from django.urls import path, include
 from .views import PostListCreateView, PostDetailUpdateDeleteView, PostRelatedView, PostSearchView
 
@@ -7,4 +9,6 @@ urlpatterns = [
     path('<int:pk>/', PostDetailUpdateDeleteView.as_view(), name='post-detail-update-delete'),
     path('<int:pk>/related/', PostRelatedView.as_view(), name='post-related'),
     path('<int:pk>/comments/', include('apps.comments.urls')),
+    path('<int:pk>/like/', PostLikeView.as_view(), name='post-like'),
+    path('<int:pk>/bookmark/', PostBookmarkView.as_view(), name='post-bookmark'),
 ]
