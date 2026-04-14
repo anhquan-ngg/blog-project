@@ -14,6 +14,7 @@ urlpatterns = [
     path('api/', include('apps.categories.urls')),
     path('api/files/', include('apps.files.urls')),
     path('api/posts/', include('apps.posts.urls')),
+    path('api/comments/', include('apps.comments.urls_global')),
     path('api/tags/', include('apps.tags.urls')),
 
     # Schema & Docs

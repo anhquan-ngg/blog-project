@@ -56,23 +56,25 @@ class PostListSerializer(serializers.ModelSerializer):
 class CreatePostSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
     content = serializers.ListField(child=serializers.DictField(), required=True)
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.filter(is_deleted=False))
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True, required=False, default=list) 
 
     def create(self, validated_data):
+        from django.db import transaction
         request = self.context.get("request")
 
-        post = (
-            PostBuilder()
-            .set_author(request.user)
-            .set_category(validated_data["category"])
-            .set_tags(validated_data["tags"])
-            .set_title(validated_data["title"])
-            .set_content(validated_data["content"])
-            .build()
-        )
+        with transaction.atomic():
+            post = (
+                PostBuilder()
+                .set_author(request.user)
+                .set_category(validated_data["category"])
+                .set_tags(validated_data.get("tags", []))
+                .set_title(validated_data["title"])
+                .set_content(validated_data["content"])
+                .build()
+            )
 
-        sync_post_images(post)
+            sync_post_images(post)
 
         return post
 
@@ -131,23 +133,25 @@ class PostDetailSerializer(serializers.ModelSerializer):
 class UpdatePostSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
     content = serializers.ListField(child=serializers.DictField(), required=True)
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.filter(is_deleted=False))
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True, required=False, default=list) 
 
     def update(self, instance, validated_data):
+        from django.db import transaction
         tags = validated_data.pop("tags", None)
         content_changed = "content" in validated_data
 
-        for key, value in validated_data.items():
-            setattr(instance, key, value)
-        instance.save()
+        with transaction.atomic():
+            for key, value in validated_data.items():
+                setattr(instance, key, value)
+            instance.save()
 
-        if tags is not None:
-            instance.tags.set(tags)
-        
-        if content_changed:
-            sync_post_images(instance)
-        
+            if tags is not None:
+                instance.tags.set(tags)
+                
+            if content_changed:
+                sync_post_images(instance)
+
         return instance
 
 class RelatedPostSerializer(serializers.ModelSerializer):
@@ -171,4 +175,3 @@ class RelatedPostSerializer(serializers.ModelSerializer):
     def get_thumbnail(self, obj) -> str | None:
         files = getattr(obj, "thumbnail_file", None)
         return files[0].file.url if files else None
-

@@ -137,5 +137,6 @@ class LogoutView(APIView):
         }
     )
     def post(self, request): 
-        request.user.auth_token.delete()
+        if request.auth is not None:
+            request.auth.delete()
         return Response({}, status=status.HTTP_204_NO_CONTENT)

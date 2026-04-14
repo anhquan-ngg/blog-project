@@ -70,6 +70,20 @@ class FileUploadView(APIView):
                         value={"detail": "Authentication credentials were not provided."}
                     )
                 ]
+            ),
+            500: OpenApiResponse(
+                response=inline_serializer(
+                    name="UploadServerError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Internal Server Error",
+                examples=[
+                    OpenApiExample(
+                        name="S3 Upload Error",
+                        summary="Failed to upload file to S3",
+                        value={"detail": "Failed to upload file to S3."}
+                    )
+                ]
             )
         }
     )
