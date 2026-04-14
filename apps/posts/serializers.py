@@ -62,7 +62,6 @@ class CreatePostSerializer(serializers.Serializer):
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True, required=False, default=list) 
 
     def create(self, validated_data):
-        from django.db import transaction
         request = self.context.get("request")
 
         with transaction.atomic():
@@ -139,7 +138,6 @@ class UpdatePostSerializer(serializers.Serializer):
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True, required=False, default=list) 
 
     def update(self, instance, validated_data):
-        from django.db import transaction
         tags = validated_data.pop("tags", None)
         content_changed = "content" in validated_data
 

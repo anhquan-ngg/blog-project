@@ -70,6 +70,28 @@ class RegisterSerializer(serializers.ModelSerializer):
             **validated_data)
         return user
     
+class CurrentUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'date_joined']
+        read_only_fields = fields
+
+
+class UpdateCurrentUserSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(max_length=100, required=False)
+    last_name = serializers.CharField(max_length=100, required=False)
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name']
+
+    def update(self, instance, validated_data):
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.save(update_fields=['first_name', 'last_name'])
+        return instance
+
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
