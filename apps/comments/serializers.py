@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db import transaction
 from .models import Comment
 from apps.files.models import File, FileStatus
 from apps.comments.services import attach_file_to_comment, detach_file_from_comment
@@ -75,10 +76,11 @@ class CreateCommentSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        file_id = validated_data.pop('file_id', None)
-        comment = Comment.objects.create(**validated_data)
-        if file_id:
-            attach_file_to_comment(file_id, comment)
+        with transaction.atomic():
+            file_id = validated_data.pop('file_id', None)
+            comment = Comment.objects.create(**validated_data)
+            if file_id:
+                attach_file_to_comment(file_id, comment)
         return comment
 
 # ── Update input serializer ───────────────────────────────────────────────────

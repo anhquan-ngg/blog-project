@@ -222,8 +222,16 @@ class CategoryViewSet(ViewSet):
         if category.is_deleted:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Get category and its children IDs
-        category_ids = [category.id] + list(Category.objects.filter(parent_id=category.id).values_list('id', flat=True))
+        # BFS to collect the full descendant tree
+        queue = [category.id]
+        descendant_ids = []
+        while queue:
+            children_ids = list(
+                Category.objects.filter(parent_id__in=queue, is_deleted=False).values_list('id', flat=True)
+            )
+            descendant_ids.extend(children_ids)
+            queue = children_ids
+        category_ids = [category.id, *descendant_ids]
 
         # Check if category or any subcategory has any posts
         posts_count = Post.objects.filter(category_id__in=category_ids, is_deleted=False).count()
@@ -236,8 +244,9 @@ class CategoryViewSet(ViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
         now = timezone.now()
 
-        # Soft delete all subcategories
-        Category.objects.filter(parent_id=category.id).update(is_deleted=True, deleted_at=now)
+        # Soft delete all descendant subcategories
+        if descendant_ids:
+            Category.objects.filter(id__in=descendant_ids).update(is_deleted=True, deleted_at=now)
         
         # Soft delete the category
         category.is_deleted = True

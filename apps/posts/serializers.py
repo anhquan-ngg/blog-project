@@ -1,9 +1,11 @@
 from rest_framework import serializers
-from .models import Post
+from django.db.models import F
+from .models import Post, Like, Bookmark
 from apps.categories.models import Category
 from apps.tags.models import Tag
 from .builder import PostBuilder
 from .services import sync_post_images
+from django.db import transaction
 
 class AuthorBriefSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -175,3 +177,47 @@ class RelatedPostSerializer(serializers.ModelSerializer):
     def get_thumbnail(self, obj) -> str | None:
         files = getattr(obj, "thumbnail_file", None)
         return files[0].file.url if files else None
+
+class PostLikeSerializer(serializers.Serializer):    
+    def toggle_like(self): 
+        request = self.context.get("request")
+        post = self.context.get("post")
+        if not request or not post:
+            raise ValueError("Missing required context: 'request' and 'post'")
+        
+        with transaction.atomic():
+            like, created = Like.objects.get_or_create(user=request.user, post=post)
+            if created:
+                Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") + 1)
+                is_liked = True
+            else:
+                like.delete()
+                Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") - 1)
+                is_liked = False
+        post.refresh_from_db(fields=["likes_count"])
+        return {
+            "is_liked": is_liked,
+            "likes_count": post.likes_count
+        }
+
+class PostBookmarkSerializer(serializers.Serializer):
+    def toggle_bookmark(self):         
+        request = self.context.get("request")
+        post = self.context.get("post")
+        if not request or not post:
+            raise ValueError("Missing required context: 'request' and 'post'")
+        
+        with transaction.atomic():
+            bookmark, created = Bookmark.objects.get_or_create(user=request.user, post=post)
+            if created:
+                Post.objects.filter(pk=post.pk).update(bookmarks_count=F("bookmarks_count") + 1)
+                is_bookmarked = True
+            else:
+                bookmark.delete()
+                Post.objects.filter(pk=post.pk).update(bookmarks_count=F("bookmarks_count") - 1)
+                is_bookmarked = False
+        post.refresh_from_db(fields=["bookmarks_count"])
+        return {
+            "is_bookmarked": is_bookmarked,
+            "bookmarks_count": post.bookmarks_count
+        }
