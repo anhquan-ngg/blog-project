@@ -1,4 +1,3 @@
-# utils/csv_helpers.py
 import csv
 import io
 
@@ -24,6 +23,7 @@ def generate_csv_rows(queryset, fields):
         buffer.truncate()
 
 from django.contrib.auth.models import User
+from apps.admin.serializers.user_serializers import UserCSVRowSerializer
 
 def import_users_from_csv(file):
     decoded = file.read().decode("utf-8")
@@ -36,14 +36,22 @@ def import_users_from_csv(file):
     for row_num, row in enumerate(reader, start=2):  # start=2 (row 1 là header)
         total_rows += 1
         try:
-            User.objects.create_user(
-                username=row["username"],
-                email=row["email"],
-                password=row["password"],
-                first_name=row.get("first_name", ""),
-                last_name=row.get("last_name", ""),
-            )
-            imported += 1
+            # Lấy data và bắt lỗi KeyError nếu file csv thiếu cột cần thiết
+            data = {
+                "username": row["username"],
+                "email": row["email"],
+                "password": row["password"],
+                "first_name": row.get("first_name", ""),
+                "last_name": row.get("last_name", ""),
+            }
+            serializer = UserCSVRowSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                imported += 1
+            else:
+                errors.append({"row": row_num, "reason": serializer.errors})
+        except KeyError as e:
+            errors.append({"row": row_num, "reason": f"Missing required column: {e!s}"})
         except Exception as e:
             errors.append({"row": row_num, "reason": str(e)})
 
