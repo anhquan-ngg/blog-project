@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'apps.posts',
     'apps.tags',
     'apps.users',
+    'apps.admin',
 ]
 
 # Basic REST framework settings

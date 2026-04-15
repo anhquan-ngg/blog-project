@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/posts/', include('apps.posts.urls')),
     path('api/comments/', include('apps.comments.urls_global')),
     path('api/tags/', include('apps.tags.urls')),
+    path('api/admin/', include('apps.admin.urls')),
 
     # Schema & Docs
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
