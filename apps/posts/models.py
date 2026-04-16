@@ -1,8 +1,10 @@
 from django.db import models
 from django.conf import settings
 from django.db.models import Index
+from django.db.models import Value, TextField
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVector
 
 class Post(models.Model):
     author = models.ForeignKey(
@@ -44,6 +46,33 @@ class Post(models.Model):
 
     def __str__(self):
         return self.title
+
+    @staticmethod
+    def _extract_text_from_blocks(blocks):
+        if not isinstance(blocks, list):
+            return ""
+        res = []
+        for b in blocks:
+            if isinstance(b, dict):
+                data = b.get("data", {})
+                if isinstance(data, dict):
+                    if "text" in data:
+                        res.append(str(data["text"]))
+                    elif "caption" in data:
+                        res.append(str(data["caption"]))
+        return " ".join(res)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        content_text = self._extract_text_from_blocks(self.content)
+        Post.objects.filter(pk=self.pk).update(
+            search_vector=(
+                SearchVector(Value(self.title, output_field=TextField()), weight="A", config="vietnamese")
+                +
+                SearchVector(Value(content_text, output_field=TextField()), weight="B", config="vietnamese")
+            )
+        )
 
 class Like(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='likes')
