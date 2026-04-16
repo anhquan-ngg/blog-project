@@ -2,7 +2,7 @@
 
 **Endpoint:** `POST /api/admin/posts/import/`  
 **Role:** Admin (authentication required, `is_staff=True`)  
-**Last Updated:** 2026-03-30  
+**Last Updated:** 2026-04-16  
 **Status:** Ready for implementation
 
 ---
@@ -18,17 +18,17 @@ Kết quả trả về thống kê: tổng dòng, số dòng thành công, số 
 
 ## 2. Business Rules
 
-| #   | Rule                                                                                     |
-| --- | ---------------------------------------------------------------------------------------- |
-| BR1 | Yêu cầu token — chỉ user đã đăng nhập mới gọi được                                      |
-| BR2 | Chỉ Admin (`is_staff=True`) được import → `403` nếu không phải                           |
-| BR3 | File phải là CSV (kiểm tra MIME type và extension) → `400` nếu sai định dạng             |
-| BR4 | Kích thước file tối đa 10MB → `400` nếu vượt quá                                         |
-| BR5 | CSV header bắt buộc: `title, content, category_name, author_username`                    |
-| BR6 | Mỗi dòng lỗi (category không tồn tại, author không tồn tại, field trống...) bị skip     |
-| BR7 | Không rollback khi có lỗi — dùng cơ chế row-by-row, commit từng dòng thành công          |
-| BR8 | Trả về `200 OK` kèm thống kê ngay cả khi toàn bộ dòng bị skip                           |
-| BR9 | `is_published` mặc định `False` nếu CSV không cung cấp                                  |
+| #   | Rule                                                                                                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ |
+| BR1 | Yêu cầu token — chỉ user đã đăng nhập mới gọi được                                                                             |
+| BR2 | Chỉ Admin (`is_staff=True`) được import → `403` nếu không phải                                                                 |
+| BR3 | File phải là CSV (kiểm tra MIME type và extension) → `400` nếu sai định dạng                                                   |
+| BR4 | Kích thước file tối đa 10MB → `400` nếu vượt quá                                                                               |
+| BR5 | CSV header bắt buộc: `title, content, category_name`. Author của bài import luôn là user đang thực hiện import (request.user). |
+| BR6 | Mỗi dòng lỗi (category không tồn tại, author không tồn tại, field trống...) bị skip                                            |
+| BR7 | Không rollback khi có lỗi — dùng cơ chế row-by-row, commit từng dòng thành công                                                |
+| BR8 | Trả về `200 OK` kèm thống kê ngay cả khi toàn bộ dòng bị skip                                                                  |
+| BR9 | `is_deleted` mặc định `False` nếu CSV không cung cấp                                                                           |
 
 ---
 
@@ -43,18 +43,17 @@ Kết quả trả về thống kê: tổng dòng, số dòng thành công, số 
 
 ### Body Parameters (form-data)
 
-| Field  | Type | Required | Constraints                       |
-| ------ | ---- | -------- | --------------------------------- |
-| `file` | file | Yes      | `.csv`, tối đa 10MB               |
+| Field  | Type | Required | Constraints         |
+| ------ | ---- | -------- | ------------------- |
+| `file` | file | Yes      | `.csv`, tối đa 10MB |
 
 ### CSV Format
 
-| Column            | Type   | Required | Mô tả                                   |
-| ----------------- | ------ | -------- | --------------------------------------- |
-| `title`           | string | Yes      | Tiêu đề bài viết, tối đa 255 ký tự      |
-| `content`         | string | Yes      | Nội dung bài viết                       |
-| `category_name`   | string | Yes      | Tên category phải tồn tại trong DB      |
-| `author_username` | string | Yes      | Username của tác giả phải tồn tại trong DB |
+| Column          | Type   | Required | Mô tả                              |
+| --------------- | ------ | -------- | ---------------------------------- |
+| `title`         | string | Yes      | Tiêu đề bài viết, tối đa 255 ký tự |
+| `content`       | string | Yes      | Nội dung bài viết                  |
+| `category_name` | string | Yes      | Tên category phải tồn tại trong DB |
 
 ### Request mẫu
 
@@ -78,9 +77,11 @@ file=<posts.csv>
 5. **Row-by-Row Processing** — Với mỗi dòng:
    - Validate `title`, `content` không rỗng.
    - Lookup `category` theo `category_name` → skip nếu không tìm thấy.
-   - Lookup `author` theo `author_username` → skip nếu không tìm thấy.
-   - Tạo `Post` object và lưu DB.
-   - Ghi nhận lỗi vào danh sách `errors` nếu có.
+
+- Gán `author = request.user` (user đang import).
+- Tạo `Post` object và lưu DB.
+- Ghi nhận lỗi vào danh sách `errors` nếu có.
+
 6. **Return Stats** — Trả về `200 OK` kèm thống kê `total_rows`, `imported`, `skipped`, `errors`.
 
 ---
@@ -89,11 +90,11 @@ file=<posts.csv>
 
 ### Tables Affected
 
-| Table      | Operation | Note                                                      |
-| ---------- | --------- | --------------------------------------------------------- |
-| `category` | SELECT    | Lookup `category_name` cho mỗi dòng CSV                   |
-| `auth_user`| SELECT    | Lookup `author_username` cho mỗi dòng CSV                 |
-| `posts`    | INSERT    | Tạo bài viết mới cho mỗi dòng hợp lệ                     |
+| Table       | Operation | Note                                          |
+| ----------- | --------- | --------------------------------------------- |
+| `category`  | SELECT    | Lookup `category_name` cho mỗi dòng CSV       |
+| `auth_user` | SELECT    | Lấy `request.user` từ phiên xác thực hiện tại |
+| `posts`     | INSERT    | Tạo bài viết mới cho mỗi dòng hợp lệ          |
 
 ### Query (Django ORM)
 
@@ -101,7 +102,7 @@ file=<posts.csv>
 import csv
 import io
 
-def import_posts(file):
+def import_posts(file, request_user):
     decoded = file.read().decode("utf-8")
     reader = csv.DictReader(io.StringIO(decoded))
 
@@ -113,16 +114,14 @@ def import_posts(file):
         total_rows += 1
         try:
             category = Category.objects.get(name=row["category_name"])
-            author = User.objects.get(username=row["author_username"])
             Post.objects.create(
                 title=row["title"],
                 content=row["content"],
                 category=category,
-                author=author,
-                is_published=False,
+                author=request_user,
             )
             imported += 1
-        except (Category.DoesNotExist, User.DoesNotExist, KeyError, Exception) as e:
+        except (Category.DoesNotExist, KeyError, Exception) as e:
             errors.append({"row": row_num, "reason": str(e)})
 
     return {
@@ -146,8 +145,8 @@ def import_posts(file):
   "skipped": 3,
   "errors": [
     { "row": 5, "reason": "Category 'Unknown' does not exist." },
-    { "row": 12, "reason": "Author 'nobody' does not exist." },
-    { "row": 38, "reason": "title: This field may not be blank." }
+    { "row": 12, "reason": "title: This field may not be blank." },
+    { "row": 38, "reason": "content: This field may not be blank." }
   ]
 }
 ```
@@ -199,23 +198,23 @@ def import_posts(file):
 
 ## 7. Error Reference
 
-| HTTP  | Nguyên nhân                        | Cách fix                                       |
-| ----- | ---------------------------------- | ---------------------------------------------- |
-| `400` | File không phải CSV                | Upload đúng định dạng `.csv`                   |
-| `400` | File vượt quá 10MB                 | Chia nhỏ file CSV và upload nhiều lần          |
-| `401` | Thiếu token                        | Thêm header `Authorization: Token <token>`     |
-| `403` | Không phải Admin                   | Dùng tài khoản có `is_staff=True`              |
-| `500` | Lỗi đọc file hoặc database         | Kiểm tra encoding UTF-8 và kết nối DB          |
+| HTTP  | Nguyên nhân                | Cách fix                                   |
+| ----- | -------------------------- | ------------------------------------------ |
+| `400` | File không phải CSV        | Upload đúng định dạng `.csv`               |
+| `400` | File vượt quá 10MB         | Chia nhỏ file CSV và upload nhiều lần      |
+| `401` | Thiếu token                | Thêm header `Authorization: Token <token>` |
+| `403` | Không phải Admin           | Dùng tài khoản có `is_staff=True`          |
+| `500` | Lỗi đọc file hoặc database | Kiểm tra encoding UTF-8 và kết nối DB      |
 
-> Lỗi từng dòng CSV (category không tồn tại, author không tồn tại...) được ghi vào `errors[]` trong response body, không gây HTTP error.
+> Lỗi từng dòng CSV (category không tồn tại, field thiếu/blank...) được ghi vào `errors[]` trong response body, không gây HTTP error.
 
 ---
 
 ## 8. Related Files
 
-| File                                                | Mô tả                              |
-| --------------------------------------------------- | ---------------------------------- |
-| [UC27 — Export Posts to CSV](uc27-export-posts.md)  | Xuất bài viết ra CSV               |
-| [UC29 — Import Users from CSV](uc29-import-users.md)| Import user từ CSV                 |
-| [UC9 — Create Post](../user/uc09-create-post.md)    | Tạo bài viết (một bài)             |
-| [README](../README.md)                              | API Documentation Index            |
+| File                                                 | Mô tả                   |
+| ---------------------------------------------------- | ----------------------- |
+| [UC27 — Export Posts to CSV](uc27-export-posts.md)   | Xuất bài viết ra CSV    |
+| [UC29 — Import Users from CSV](uc29-import-users.md) | Import user từ CSV      |
+| [UC9 — Create Post](../user/uc09-create-post.md)     | Tạo bài viết (một bài)  |
+| [README](../README.md)                               | API Documentation Index |
