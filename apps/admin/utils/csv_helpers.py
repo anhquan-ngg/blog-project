@@ -27,7 +27,7 @@ def generate_csv_rows(queryset, fields, serializer_class=None):
 
     # Data rows
     if serializer_class:
-        for obj in queryset.iterator():
+        for obj in queryset:
             data = serializer_class(obj).data
             writer.writerow([_csv_cell_value(data.get(field, "")) for field in fields])
             yield buffer.getvalue()

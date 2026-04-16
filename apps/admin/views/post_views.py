@@ -1,7 +1,8 @@
 from django.utils import timezone
+from django.db.models import Prefetch
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from apps.posts.models import Post
+from apps.posts.models import Post, PostImages
 from django.utils.dateparse import parse_date
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,7 +21,10 @@ class ExportPostsToCSVView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     
     def get(self, request):
-        queryset = Post.objects.filter(is_deleted=False).prefetch_related("tags", "post_images").order_by("id")
+        queryset = Post.objects.filter(is_deleted=False).select_related("author", "category").prefetch_related(
+            "tags",
+            Prefetch("post_images", queryset=PostImages.objects.select_related("file")),
+        ).order_by("id")
         
         category = request.query_params.get("category")
         if category :
