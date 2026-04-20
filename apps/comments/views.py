@@ -199,3 +199,10 @@ class CommentUpdateDeleteAPIView(UpdateAPIView, DestroyAPIView):
         instance.is_deleted = True
         instance.deleted_at = timezone.now()
         instance.save(update_fields=["is_deleted", "deleted_at"])
+        
+        # Xoá rác Notification
+        from apps.notifications.models import Notification
+        Notification.objects.filter(
+            target_id=instance.id,
+            target_type='comment'
+        ).delete()
