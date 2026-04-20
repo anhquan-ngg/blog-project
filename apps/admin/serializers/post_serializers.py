@@ -42,13 +42,13 @@ class PostCSVRowSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         author = self.context["author"]
-        category = Category.objects.get_or_create(name=validated_data["category_name"])
+        category, _ = Category.objects.filter(is_deleted=False).get_or_create(name=validated_data["category_name"])
         # Normalize CSV text into the same JSON block shape used by editor content.
         content_json = [{"type": "paragraph", "data": {"text": validated_data["content"]}}]
         return Post.objects.create(
             title=validated_data["title"],
             content=content_json,
-            category=category[0],  # get_or_create returns a tuple (object, created)
+            category=category,  
             author=author,
             is_deleted=False,
         )

@@ -1,7 +1,9 @@
 from drf_spectacular.utils import (
     extend_schema, OpenApiExample, OpenApiResponse,
-    OpenApiParameter, OpenApiTypes
+    OpenApiParameter, inline_serializer
 )
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import ListCreateAPIView, UpdateAPIView, DestroyAPIView
@@ -70,13 +72,29 @@ class CommentListCreateAPIView(ListCreateAPIView):
             "No authentication required. Paginated by limit/offset."
         ),
         parameters=[
-            OpenApiParameter("limit", OpenApiTypes.INT, description="Số comment mỗi trang (default 20, max 100)"),
-            OpenApiParameter("offset", OpenApiTypes.INT, description="Số comment bỏ qua (default 0)"),
+            OpenApiParameter(name="limit", type=OpenApiTypes.INT, description="Số comment mỗi trang (default 20, max 100)"),
+            OpenApiParameter(name="offset", type=OpenApiTypes.INT, description="Số comment bỏ qua (default 0)"),
         ],
         responses={
             200: CommentSerializer(many=True),
-            404: OpenApiResponse(description="Post not found"),
-        },
+            404: OpenApiResponse(
+                description="Not Found - Post not found",
+                response=inline_serializer(
+                    name="CommentListNotFoundError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="Not found."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Not Found",
+                        value={"detail": "Not found."}
+                    )
+                ]
+            ),
+        }
     )
     def get(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
@@ -90,24 +108,62 @@ class CommentListCreateAPIView(ListCreateAPIView):
         request=CreateCommentSerializer,
         responses={
             201: CommentSerializer,
-            400: OpenApiResponse(description="Validation error"),
-            401: OpenApiResponse(description="Unauthorized"),
-            404: OpenApiResponse(description="Post not found"),
-        },
-        examples=[
-            OpenApiExample(
-                name="Top-level comment",
-                summary="Top-level comment",
-                value={"content": "This is a great explanation!", "file_id": None, "parent_id": None},
-                request_only=True,
+            400: OpenApiResponse(
+                description="Bad Request - Validation Error",
+                response=inline_serializer(
+                    name="CommentCreateValidationError",
+                    fields={
+                        "content": serializers.ListField(child=serializers.CharField(), required=False),
+                        "parent_id": serializers.ListField(child=serializers.CharField(), required=False),
+                        "file_id": serializers.ListField(child=serializers.CharField(), required=False)
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Validation Error",
+                        value={"content": ["This field is required."]}
+                    ),
+                    OpenApiExample(
+                        "Invalid parent_id",
+                        value={"parent_id": ["Invalid pk \"999\" - object does not exist."]}
+                    )
+                ]
             ),
-            OpenApiExample(
-                name="Reply (Level 2)",
-                summary="Reply to a comment",
-                value={"content": "Totally agree with you!", "parent_id": 5},
-                request_only=True,
+            401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
+                response=inline_serializer(
+                    name="CommentCreateUnauthorizedError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="Authentication credentials were not provided."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
             ),
-        ]
+            404: OpenApiResponse(
+                description="Not Found - Post not found",
+                response=inline_serializer(
+                    name="CommentCreateNotFoundError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="Not found."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Not Found",
+                        value={"detail": "Not found."}
+                    )
+                ]
+            ),
+        }
     )
     def post(self, request, *args, **kwargs):
         post = self._get_post()
@@ -146,18 +202,74 @@ class CommentUpdateDeleteAPIView(UpdateAPIView, DestroyAPIView):
         request=UpdateCommentSerializer,
         responses={
             200: CommentSerializer,
-            400: OpenApiResponse(description="Validation error"),
-            401: OpenApiResponse(description="Unauthorized"),
-            403: OpenApiResponse(description="Forbidden"),
-            404: OpenApiResponse(description="Not found"),
-        },
-        examples=[
-            OpenApiExample(
-                name="Update comment",
-                value={"content": "Updated comment content.", "file_id": 100},
-                request_only=True,
-            )
-        ]
+            400: OpenApiResponse(
+                description="Bad Request - Validation Error",
+                response=inline_serializer(
+                    name="CommentUpdateValidationError",
+                    fields={
+                        "content": serializers.ListField(child=serializers.CharField(), required=False),
+                        "file_id": serializers.ListField(child=serializers.CharField(), required=False)
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Validation Error",
+                        value={"content": ["This field may not be blank."]}
+                    )
+                ]
+            ),
+            401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
+                response=inline_serializer(
+                    name="CommentUpdateUnauthorizedError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="Authentication credentials were not provided."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            ),
+            403: OpenApiResponse(
+                description="Forbidden - You do not have permission",
+                response=inline_serializer(
+                    name="CommentUpdateForbiddenError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="You do not have permission to perform this action."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Forbidden",
+                        value={"detail": "You do not have permission to perform this action."}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="Not Found - Comment does not exist",
+                response=inline_serializer(
+                    name="CommentUpdateNotFoundError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="Not found."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Not Found",
+                        value={"detail": "Not found."}
+                    )
+                ]
+            ),
+        }
     )
     def patch(self, request, *args, **kwargs):
         return self.partial_update(request, *args, **kwargs)
@@ -186,10 +298,58 @@ class CommentUpdateDeleteAPIView(UpdateAPIView, DestroyAPIView):
         summary="Delete Comment",
         description="Soft delete a comment (set is_deleted=True). Owner or Admin only.",
         responses={
-            204: OpenApiResponse(description="No Content"),
-            401: OpenApiResponse(description="Unauthorized"),
-            403: OpenApiResponse(description="Forbidden"),
-            404: OpenApiResponse(description="Not found"),
+            204: OpenApiTypes.NONE,
+            401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
+                response=inline_serializer(
+                    name="CommentDeleteUnauthorizedError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="Authentication credentials were not provided."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            ),
+            403: OpenApiResponse(
+                description="Forbidden - You do not have permission",
+                response=inline_serializer(
+                    name="CommentDeleteForbiddenError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="You do not have permission to perform this action."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Forbidden",
+                        value={"detail": "You do not have permission to perform this action."}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="Not Found - Comment does not exist",
+                response=inline_serializer(
+                    name="CommentDeleteNotFoundError",
+                    fields={
+                        "detail": serializers.CharField(
+                            default="Not found."
+                        )
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Not Found",
+                        value={"detail": "Not found."}
+                    )
+                ]
+            ),
         }
     )
     def delete(self, request, *args, **kwargs):
@@ -200,7 +360,9 @@ class CommentUpdateDeleteAPIView(UpdateAPIView, DestroyAPIView):
         instance.deleted_at = timezone.now()
         instance.save(update_fields=["is_deleted", "deleted_at"])
         
-        # Xoá rác Notification
+        
+        # Don't use transaction atomic here to avoid rollback of comment deletion if notification deletion fails. We can afford to have orphaned notifications, but not undeleted comments.
+        # Use celery in future if this becomes a performance bottleneck.
         from apps.notifications.models import Notification
         Notification.objects.filter(
             target_id=instance.id,

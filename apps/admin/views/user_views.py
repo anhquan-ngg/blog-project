@@ -1,3 +1,4 @@
+import csv
 from apps.admin.utils.csv_helpers import generate_csv_rows, import_users_from_csv
 from rest_framework.generics import get_object_or_404
 from rest_framework import status
@@ -7,7 +8,9 @@ from apps.admin.serializers.user_serializers import BanUserSerializer, ImportUse
 from rest_framework.permissions import IsAdminUser
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer, OpenApiExample, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
 from django.utils.dateparse import parse_date
 from django.http import StreamingHttpResponse
 from django.utils import timezone
@@ -28,10 +31,66 @@ class BanUserView(APIView):
         request=None,
         responses={
             200: BanUserSerializer,
-            400: OpenApiResponse(description="Bad Request - Cannot ban yourself, another admin, or an already banned user"),
-            401: OpenApiResponse(description="Unauthorized - Token is missing or invalid"),
-            403: OpenApiResponse(description="Forbidden - User is not an admin"),
-            404: OpenApiResponse(description="Not Found - User does not exist"),
+            400: OpenApiResponse(
+                description="Bad Request - Cannot ban yourself, another admin, or an already banned user",
+                response=inline_serializer(
+                    name="BanUserErrorResponse",
+                    fields={
+                        "non_field_errors": serializers.ListField(child=serializers.CharField())
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        name="Cannot ban yourself",
+                        value={"non_field_errors": ["You cannot ban yourself."]}
+                    )
+                ]
+            ),
+            401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
+                response=inline_serializer(
+                    name="BanUserUnauthorizedError",
+                    fields={
+                        "detail": serializers.CharField()
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        name="Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            ),
+            403: OpenApiResponse(
+                description="Forbidden - User is not an admin",
+                response=inline_serializer(
+                    name="BanUserForbiddenError",
+                    fields={
+                        "detail": serializers.CharField()
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        name="Forbidden",
+                        value={"detail": "You do not have permission to perform this action."}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="Not Found - User does not exist",
+                response=inline_serializer(
+                    name="BanUserNotFoundError",
+                    fields={
+                        "detail": serializers.CharField()
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        name="Not Found",
+                        value={"detail": "Not found."}
+                    )
+                ]
+            ),
         }
     )
     def post(self, request, pk):
@@ -50,10 +109,66 @@ class UnbanUserView(APIView):
         request=None,
         responses={
             200: BanUserSerializer,
-            400: OpenApiResponse(description="Bad Request - Cannot unban an already active user"),
-            401: OpenApiResponse(description="Unauthorized - Token is missing or invalid"),
-            403: OpenApiResponse(description="Forbidden - User is not an admin"),
-            404: OpenApiResponse(description="Not Found - User does not exist"),
+            400: OpenApiResponse(
+                description="Bad Request - Cannot unban an already active user",
+                response=inline_serializer(
+                    name="UnbanUserErrorResponse",
+                    fields={
+                        "non_field_errors": serializers.ListField(child=serializers.CharField())
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        name="Cannot unban active user",
+                        value={"non_field_errors": ["User is already active."]}
+                    )
+                ]
+            ),
+            401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
+                response=inline_serializer(
+                    name="UnbanUserUnauthorizedError",
+                    fields={
+                        "detail": serializers.CharField()
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        name="Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            ),
+            403: OpenApiResponse(
+                description="Forbidden - User is not an admin",
+                response=inline_serializer(
+                    name="UnbanUserForbiddenError",
+                    fields={
+                        "detail": serializers.CharField()
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        name="Forbidden",
+                        value={"detail": "You do not have permission to perform this action."}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="Not Found - User does not exist",
+                response=inline_serializer(
+                    name="UnbanUserNotFoundError",
+                    fields={
+                        "detail": serializers.CharField()
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        name="Not Found",
+                        value={"detail": "Not found."}
+                    )
+                ]
+            ),
         }
     )
     def post(self, request, pk): 
@@ -65,6 +180,61 @@ class UnbanUserView(APIView):
 class ExportUsersToCSVView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     
+    @extend_schema(
+        summary="Export Users to CSV",
+        description="Export users to a CSV file. Filter by is_active, is_staff, from_date, and to_date.",
+        responses={
+            200: OpenApiResponse(description="CSV file containing users data"),
+            400: OpenApiResponse(
+                description="Bad Request - Invalid date format or boolean value",
+                response=inline_serializer(
+                    name="ExportUsersToCSVError",
+                    fields={
+                        "is_active": serializers.ListField(child=serializers.CharField(), required=False),
+                        "is_staff": serializers.ListField(child=serializers.CharField(), required=False),
+                        "from": serializers.ListField(child=serializers.CharField(), required=False),
+                        "to": serializers.ListField(child=serializers.CharField(), required=False)
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Invalid from date",
+                        value={"from": ["Invalid date format. Use YYYY-MM-DD."]}
+                    ),
+                    OpenApiExample(
+                        "Invalid is_active boolean",
+                        value={"is_active": ["Value must be 'true' or 'false'."]}
+                    )
+                ]
+            ),
+            401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
+                response = inline_serializer(
+                    name="ExportUsersToCSVUnauthorizedError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            ),
+            403: OpenApiResponse(
+                description="Forbidden - User is not an admin",
+                response = inline_serializer(
+                    name="ExportUsersToCSVForbiddenError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Forbidden",
+                        value={"detail": "You do not have permission to perform this action."}
+                    )
+                ]
+            ),
+        }
+    )
     def get(self, request): 
         queryset = User.objects.all().order_by("id")
         is_active = request.query_params.get("is_active")
@@ -125,9 +295,52 @@ class ImportUsersFromCSVView(APIView):
         request=ImportUserFromCSVSerializer,
         responses={
             200: OpenApiResponse(description="Import stats (total_rows, imported, skipped, errors)"),
-            400: OpenApiResponse(description="Bad Request - Invalid or oversized file"),
-            401: OpenApiResponse(description="Unauthorized - Token is missing or invalid"),
-            403: OpenApiResponse(description="Forbidden - User is not an admin"),
+            400: OpenApiResponse(
+                description="Bad Request - Invalid or oversized file",
+                response=inline_serializer(
+                    name="ImportUsersFromCSVError",
+                    fields={
+                        "file": serializers.ListField(child=serializers.CharField(), required=False)
+                    }
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Error processing CSV",
+                        value={"file": ["Error processing CSV: <error details>"]}
+                    ),
+                    OpenApiExample(
+                        "Invalid file error",
+                        value={"file": ["The submitted file is empty."]}
+                    )
+                ]
+            ),
+            
+            401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
+                response = inline_serializer(
+                    name="ImportUsersToCSVUnauthorizedError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Unauthorized",
+                        value={"detail": "Authentication credentials were not provided."}
+                    )
+                ]
+            ),
+            403: OpenApiResponse(
+                description="Forbidden - User is not an admin",
+                response = inline_serializer(
+                    name="ImportUsersToCSVForbiddenError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Forbidden",
+                        value={"detail": "You do not have permission to perform this action."}
+                    )
+                ]
+            ),
         }
     )
     def post(self, request):
@@ -136,6 +349,8 @@ class ImportUsersFromCSVView(APIView):
             try:
                 result = import_users_from_csv(serializer.validated_data['file'])
                 return Response(result, status=status.HTTP_200_OK)
-            except Exception as e:
+            except (csv.Error, UnicodeDecodeError, ValueError) as e:
                 return Response({"file": [f"Error processing CSV: {str(e)}"]}, status=status.HTTP_400_BAD_REQUEST)
+            except BaseException:
+                raise
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

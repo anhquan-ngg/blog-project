@@ -1,7 +1,6 @@
 import csv
 import io
 import json
-from django.contrib.auth.models import User
 from apps.admin.serializers.post_serializers import PostCSVRowSerializer
 from apps.admin.serializers.user_serializers import UserCSVRowSerializer
 

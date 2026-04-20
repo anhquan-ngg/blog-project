@@ -24,11 +24,12 @@ class RegisterView(APIView):
             201: RegisterSerializer,
             400: OpenApiResponse(
                 response=inline_serializer(
-                    name="RegisterValidationError",
+                    name="UserRegisterValidationError",
                     fields={
                         "username": serializers.ListField(child=serializers.CharField(), required=False),
                         "email": serializers.ListField(child=serializers.CharField(), required=False),
                         "password": serializers.ListField(child=serializers.CharField(), required=False),
+                        "password_confirm": serializers.ListField(child=serializers.CharField(), required=False),
                         "non_field_errors": serializers.ListField(child=serializers.CharField(), required=False),
                     }
                 ),
@@ -42,6 +43,16 @@ class RegisterView(APIView):
                             "email": ["This email is already registered."],
                             "password": ["Password must be 8-50 characters and contain at least one letter and one digit."],
                             "non_field_errors": ["Passwords do not match."]
+                        }
+                    ),
+                    OpenApiExample(
+                        name="Missing fields",
+                        summary="Missing fields",
+                        value={
+                            "username": ["This field is required."],
+                            "email": ["This field is required."],
+                            "password": ["This field is required."],
+                            "password_confirm": ["This field is required."]
                         }
                     )
                 ]
@@ -64,14 +75,14 @@ class LoginView(APIView):
         request=LoginSerializer,
         responses={
             200: inline_serializer(
-                name='LoginResponse',
+                name='UserLoginResponse',
                 fields={
                     'token': serializers.CharField()
                 }
             ),
             400: OpenApiResponse(
                 response=inline_serializer(
-                    name="LoginValidationError",
+                    name="UserLoginValidationError",
                     fields={
                         "username": serializers.ListField(child=serializers.CharField(), required=False),
                         "password": serializers.ListField(child=serializers.CharField(), required=False),
@@ -123,7 +134,7 @@ class LogoutView(APIView):
             204: OpenApiTypes.NONE,
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="UnauthorizedResponse",
+                    name="UserLogoutUnauthorizedError",
                     fields={
                         "detail": serializers.CharField()
                     }
@@ -159,7 +170,7 @@ class CurrentUserView(APIView):
             200: CurrentUserSerializer,
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="MeUnauthorized",
+                    name="UserMeGetUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
@@ -184,7 +195,7 @@ class CurrentUserView(APIView):
             200: CurrentUserSerializer,
             400: OpenApiResponse(
                 response=inline_serializer(
-                    name="MeUpdateValidationError",
+                    name="UserMeUpdateValidationError",
                     fields={
                         "first_name": serializers.ListField(child=serializers.CharField(), required=False),
                         "last_name": serializers.ListField(child=serializers.CharField(), required=False),
@@ -200,7 +211,7 @@ class CurrentUserView(APIView):
             ),
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="MePatchUnauthorized",
+                    name="UserMeUpdateUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
@@ -231,14 +242,14 @@ class LikedPostsView(APIView):
         summary="View Liked Posts",
         description="Returns a paginated list of posts the authenticated user has liked, ordered by most recently liked first.",
         parameters=[
-            OpenApiParameter("limit", OpenApiTypes.INT, description="Number of items per page (max 100)", default=10),
-            OpenApiParameter("offset", OpenApiTypes.INT, description="Number of items to skip", default=0),
+            OpenApiParameter("limit", OpenApiTypes.INT, location=OpenApiParameter.QUERY, description="Number of items per page (max 100)", default=10),
+            OpenApiParameter("offset", OpenApiTypes.INT, location=OpenApiParameter.QUERY, description="Number of items to skip", default=0),
         ],
         responses={
             200: PostListSerializer(many=True),
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="LikedUnauthorized",
+                    name="UserLikedUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
@@ -275,14 +286,14 @@ class BookmarkedPostsView(APIView):
         summary="View Bookmarked Posts",
         description="Returns a paginated list of posts the authenticated user has bookmarked, ordered by most recently bookmarked first.",
         parameters=[
-            OpenApiParameter("limit", OpenApiTypes.INT, description="Number of items per page (max 100)", default=10),
-            OpenApiParameter("offset", OpenApiTypes.INT, description="Number of items to skip", default=0),
+            OpenApiParameter("limit", OpenApiTypes.INT, location=OpenApiParameter.QUERY, description="Number of items per page (max 100)", default=10),
+            OpenApiParameter("offset", OpenApiTypes.INT, location=OpenApiParameter.QUERY, description="Number of items to skip", default=0),
         ],
         responses={
             200: PostListSerializer(many=True),
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="BookmarksUnauthorized",
+                    name="UserBookmarksUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
