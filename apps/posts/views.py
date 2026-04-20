@@ -287,6 +287,7 @@ class PostDetailUpdateDeleteView(APIView):
     )
     def delete(self, request, pk):
         from django.utils import timezone
+        from apps.notifications.models import Notification
 
         post = self._get_post(pk)
         self.check_object_permissions(request, post)
@@ -294,6 +295,21 @@ class PostDetailUpdateDeleteView(APIView):
         post.deleted_at = timezone.now()
 
         post.save(update_fields=['is_deleted', 'deleted_at'])
+        
+        # Xoá rác Notification liên quan đến post (Ví dụ: thông báo người khác đã comment vào bài, hoặc like bài này)
+        Notification.objects.filter(
+            target_id=post.id,
+            target_type='post'
+        ).delete()
+
+        # Xoá notifications của các comments thuộc post này
+        from apps.comments.models import Comment
+        comment_ids = Comment.objects.filter(post=post).values_list('id', flat=True)
+        if comment_ids:
+            Notification.objects.filter(
+                target_id__in=list(comment_ids),
+                target_type='comment'
+            ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class PostSearchView(APIView):

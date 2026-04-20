@@ -193,6 +193,15 @@ class PostLikeSerializer(serializers.Serializer):
                 deleted_count, _ = like.delete()
                 if deleted_count > 0: # Check if the like was actually deleted
                     Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") - 1)
+                    
+                    # Xoá rác Notification
+                    from apps.notifications.models import Notification, NotificationType
+                    Notification.objects.filter(
+                        actor=request.user,
+                        target_id=post.id,
+                        target_type='post',
+                        type=NotificationType.LIKED_POST
+                    ).delete()
                 is_liked = False
         post.refresh_from_db(fields=["likes_count"])
         return {
