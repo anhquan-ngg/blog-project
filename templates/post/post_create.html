@@ -1,0 +1,122 @@
+{% extends "base.html" %} {% block title %}Create New Post | Blog UI
+{%endblock%} {% block content %}
+<div class="page-wrap">
+  <div class="hero">
+    <h1 class="display-text" style="font-family: 'Nike Futura ND', sans-serif;">Create New Post</h1>
+    <p class="lead" style="font-family: 'Helvetica Now Text', sans-serif;">The journey of sharing knowledge starts with words.</p>
+
+    <form id="create-post-form" class="form-grid mt-48">
+      <!-- Cover Image (Dropzone) -->
+      <label>
+        Cover Image
+        <div class="dropzone" id="dropzone-container" style="border-width: 1.5px; border-radius: 0;">
+          <input type="file" name="cover_image" id="post-cover-image" accept="image/*" />
+          <div class="dropzone-label">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; color: var(--ink);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <br/>
+            Drag & drop an image here or <span class="highlight">browse</span>.
+          </div>
+        </div>
+      </label>
+
+      <!-- Title -->
+      <label>
+        Post Title
+        <input
+          type="text"
+          name="title"
+          id="post-title"
+          required
+          placeholder="Enter an engaging title..."
+          style="border-radius: 0; padding: 16px;"
+        />
+      </label>
+
+      <!-- Category -->
+      <label>
+        Categories
+        <select name="category" id="post-category" required class="select-box" style="padding: 16px; border: 1.5px solid var(--line); border-radius: 0; background: #f5f5f5; font: inherit;">
+          <option value="">-- Select category --</option>
+          <!-- Render via JS -->
+        </select>
+      </label>
+
+      <!-- Tags -->
+      <label>
+        Tags (IDs, comma-separated)
+        <input
+          type="text"
+          name="tags"
+          id="post-tags"
+          placeholder="Example: 1, 2, 3"
+          style="border-radius: 0; padding: 16px;"
+        />
+      </label>
+
+      <!-- Content (Simple textarea since we emulate JSON/Editor JS in JS) -->
+      <label>
+        Content (Plain text)
+        <textarea
+          name="content"
+          id="post-content"
+          rows="10"
+          required
+          placeholder="Post content..."
+          class="textarea-box"
+          style="border-radius: 0; padding: 16px;"
+        ></textarea>
+      </label>
+
+      <div id="form-msg" class="message"></div>
+
+      <button
+        type="submit"
+        class="btn btn-primary"
+        id="btn-submit"
+        style="width: fit-content; border-radius: 30px; font-weight: bold; margin-top: 16px;"
+      >
+        Publish Post
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script src="/static/js/api.js"></script>
+<script src="/static/js/post_create.js"></script>
+<script>
+  // Simple Dropzone UX
+  const dropzone = document.getElementById('dropzone-container');
+  const fileInput = document.getElementById('post-cover-image');
+  const label = dropzone.querySelector('.dropzone-label');
+  const originalLabelHtml = label.innerHTML;
+
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropzone.addEventListener(eventName, () => dropzone.classList.add('dragover'), false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, () => dropzone.classList.remove('dragover'), false);
+  });
+
+  fileInput.addEventListener('change', function() {
+    if (this.files && this.files[0]) {
+      label.replaceChildren();
+      const strong = document.createElement('strong');
+      strong.textContent = 'Selected:';
+      label.appendChild(strong);
+      label.appendChild(document.createTextNode(` ${this.files[0].name}`));
+    } else {
+      label.innerHTML = originalLabelHtml;
+    }
+  });
+</script>
+{% endblock %}

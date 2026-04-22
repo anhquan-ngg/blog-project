@@ -1,0 +1,47 @@
+{% extends "base.html" %} {% block title %}Sign Up | Blog UI{% endblock %}
+{%block content %}
+<section class="auth-shell">
+  <div class="auth-card">
+    <h1 style="text-align: center">Sign Up Account</h1>
+    <p class="muted">Create a new account to get started</p>
+
+    <form id="register-form" class="form-grid" novalidate>
+      <label>
+        Username
+        <input type="text" name="username" required />
+      </label>
+      <label>
+        Email
+        <input type="email" name="email" required />
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" required />
+      </label>
+      <label>
+        Confirm password
+        <input type="password" name="password_confirm" required />
+      </label>
+      <label>
+        First name
+        <input type="text" name="first_name" />
+      </label>
+      <label>
+        Last name
+        <input type="text" name="last_name" />
+      </label>
+      <button type="submit" class="btn btn-primary">Sign Up</button>
+    </form>
+
+    <div id="register-message" class="message" aria-live="polite"></div>
+    <p class="switch-link" style="text-align: center">
+      Already have an account? <a href="/login/">Sign In</a>
+    </p>
+  </div>
+</section>
+{% endblock %} {% block scripts %}
+<script src="/static/js/auth.js"></script>
+<script>
+  window.AuthPages.initRegister();
+</script>
+{% endblock %}

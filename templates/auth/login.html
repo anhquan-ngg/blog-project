@@ -1,0 +1,39 @@
+{% extends "base.html" %} {% block title %}Login | Blog UI {% endblock %}
+{%block content %}
+<section class="auth-shell">
+  <div class="auth-card">
+    <h1 class="">Sign In</h1>
+    <p class="muted">Enter your username and password</p>
+
+    <form id="login-form" class="form-grid" novalidate>
+      <label>
+        Username
+        <input type="text" name="username" required />
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" required />
+      </label>
+      <button type="submit" class="btn btn-primary">Sign In</button>
+    </form>
+
+    <div id="login-message" class="message" aria-live="polite"></div>
+
+    {% comment %} <div class="token-box">
+      <p class="muted">
+        Token (luu localStorage key: <code>auth_token</code>):
+      </p>
+      <pre id="token-output">(None yet)</pre>
+    </div> {% endcomment %}
+
+    <p class="switch-link">
+      Don't have an account? <a href="/register/">Sign Up</a>
+    </p>
+  </div>
+</section>
+{% endblock %} {% block scripts %}
+<script src="/static/js/auth.js"></script>
+<script>
+  window.AuthPages.initLogin();
+</script>
+{% endblock %}

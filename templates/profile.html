@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Profile | Blog UI{% endblock %}
+
+{% block content %}
+<div class="page-wrap profile-dashboard">
+  <!-- Sidebar -->
+  <aside class="profile-sidebar">
+    <div class="user-block">
+        <h2 id="profile-name" class="display-text" style="font-size: 2rem;"></h2>
+        <p id="profile-email" class="muted"></p>
+    </div>
+    
+    <nav class="profile-nav mt-24">
+        <a href="#notifications" class="active">Notifications</a>
+    </nav>
+    
+    <button id="btn-logout" class="btn btn-outline mt-24" style="width: 100%;">Logout</button>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="profile-main">
+    <section id="notifications">
+        <h2 class="display-text mb-24" style="font-size: 2.5rem;">NOTIFICATIONS</h2>
+        
+        <div id="notifications-list" class="notification-list">
+            <!-- Loaded via JS -->
+            <div class="muted">Loading notifications...</div>
+        </div>
+    </section>
+
+    <!-- Optionally switch to settings view via JS tab logic -->
+  </main>
+</div>
+
+<style>
+.profile-dashboard {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 48px;
+    align-items: start;
+}
+
+@media (max-width: 880px) {
+    .profile-dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+.profile-sidebar {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px;
+}
+
+.profile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.profile-nav a {
+    text-decoration: none;
+    color: var(--ink);
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.profile-nav a:hover, .profile-nav a.active {
+    background: #F5F5F5;
+}
+
+.notification-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.notif-item {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.notif-item:last-child {
+    border-bottom: none;
+}
+
+.notif-unread {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.notif-read {
+    color: var(--muted);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/api.js?v=4"></script>
+<script src="/static/js/profile.js?v=4"></script>
+{% endblock %}

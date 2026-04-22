@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Library | Blog UI{% endblock %}
+
+{% block content %}
+<div class="page-wrap library-dashboard">
+  <div class="hero" style="text-align: center; border: none; box-shadow: none; background: transparent; padding-top: 0;">
+      <h1 class="display-text">LIBRARY</h1>
+      
+      <!-- Sticky Navigation Tabs -->
+      <nav class="library-tabs mt-24">
+          <a href="#liked" id="tab-liked" class="active">Liked Posts</a>
+          <a href="#bookmarks" id="tab-bookmarks">Saved (Bookmarks)</a>
+      </nav>
+  </div>
+
+  <section id="library-content" class="mt-48">
+      <div id="loading" style="display: none; padding: 48px; text-align: center;">Loading...</div>
+      <div class="product-grid" id="library-grid">
+          <!-- Posts loaded via JS -->
+      </div>
+  </section>
+</div>
+
+<style>
+.library-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    border-bottom: 2px solid var(--line);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding: 16px 0;
+    z-index: 10;
+}
+
+.library-tabs a {
+    text-decoration: none;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 1.1rem;
+    padding-bottom: 14px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.library-tabs a:hover {
+    color: var(--ink);
+}
+
+.library-tabs a.active {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/api.js"></script>
+<script src="/static/js/library.js"></script>
+{% endblock %}

@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+from django.db import IntegrityError
 from apps.admin.serializers.post_serializers import PostCSVRowSerializer
 from apps.admin.serializers.user_serializers import UserCSVRowSerializer
 
@@ -60,8 +61,20 @@ def import_users_from_csv(file):
             }
             serializer = UserCSVRowSerializer(data=data)
             if serializer.is_valid():
-                serializer.save()
-                imported += 1
+                try:
+                    serializer.save()
+                    imported += 1
+                except IntegrityError:
+                    errors.append(
+                        {
+                            "row": row_num,
+                            "reason": {
+                                "non_field_errors": [
+                                    "Duplicate username or email detected (database uniqueness constraint)."
+                                ]
+                            },
+                        }
+                    )
             else:
                 errors.append({"row": row_num, "reason": serializer.errors})
         except KeyError as e:

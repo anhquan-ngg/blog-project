@@ -222,13 +222,13 @@ class PostBookmarkSerializer(serializers.Serializer):
             locked_post = Post.objects.select_for_update().get(pk=post.pk)
             bookmark, created = Bookmark.objects.get_or_create(user=request.user, post=locked_post)
             if created:
-                locked_post.bookmarks_count += 1
+                locked_post.bookmarks_count = F("bookmarks_count") + 1
                 locked_post.save(update_fields=["bookmarks_count"])
                 is_bookmarked = True
             else:
                 deleted_count, _ = bookmark.delete()
                 if deleted_count > 0:
-                    locked_post.bookmarks_count -= 1
+                    locked_post.bookmarks_count = F("bookmarks_count") - 1
                     locked_post.save(update_fields=["bookmarks_count"])
                 is_bookmarked = False
         post.refresh_from_db(fields=["bookmarks_count"])

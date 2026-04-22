@@ -37,10 +37,26 @@ class BanUserSerializer(serializers.ModelSerializer):
 
         return target
 
-    def get_detail(self, obj):
+    def get_detail(self, obj) -> str:
         if obj.is_active:
             return "User has been unbanned."
         return "User has been banned."
+
+
+class AdminUserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'is_active',
+            'is_staff',
+            'date_joined',
+        ]
+        read_only_fields = fields
 
 class ImportUserFromCSVSerializer(serializers.Serializer):
     file = serializers.FileField()

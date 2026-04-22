@@ -12,6 +12,9 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_seriali
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 from apps.admin.utils.csv_helpers import generate_csv_rows, import_posts_from_csv
+import logging
+
+logger = logging.getLogger(__name__)
 
 CSV_FIELDS = [
     "id", "title", "author_username",
@@ -198,6 +201,7 @@ class ImportPostsFromCSVView(APIView):
                 result = import_posts_from_csv(serializer.validated_data["file"], request.user)
                 return Response(result, status=status.HTTP_200_OK)
             except Exception as e:
-                return Response({"file": [f"Error processing CSV: {str(e)}"]}, status=status.HTTP_400_BAD_REQUEST)
+                logger.exception("Error importing posts from CSV")
+                return Response({"file": [f"Error processing CSV file. Please check the file format and try again."]}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             

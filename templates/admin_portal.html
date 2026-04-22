@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Portal | Blog UI{% endblock %}
+
+{% block content %}
+<div class="page-wrap admin-dashboard">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar" id="admin-sidebar" style="border: 1px solid var(--line); border-radius: 0px; padding: 32px; background: #fafafa;">
+    <h2 class="display-text mb-24" style="font-size: 1.5rem; margin-bottom: 32px; font-family: 'Nike Futura ND', sans-serif;">ADMIN PANEL</h2>
+    
+    <nav class="admin-nav" style="display: flex; flex-direction: column; gap: 8px;">
+        <a href="#dashboard" class="active" onclick="switchAdminTab('dashboard')" style="border-radius: 0;">Dashboard</a>
+        <a href="#categories" onclick="switchAdminTab('categories')" style="border-radius: 0;">Manage Categories</a>
+        <a href="#users" onclick="switchAdminTab('users')" style="border-radius: 0;">Manage Users</a>
+        <a href="#posts" onclick="switchAdminTab('posts')" style="border-radius: 0;">Import/Export Posts</a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="admin-main">
+    
+    <!-- DASHBOARD TAB -->
+    <section id="admin-dashboard">
+        <h1 class="display-text">OVERVIEW</h1>
+        <div class="cards mt-24">
+            <div class="card">
+                <h3>Users</h3>
+                <p id="stat-users">Loading...</p>
+            </div>
+            <div class="card">
+                <h3>Posts</h3>
+                <p id="stat-posts">Loading...</p>
+            </div>
+            <div class="card">
+                <h3>Categories</h3>
+                <p id="stat-categories">Loading...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CATEGORIESTAB -->
+    <section id="admin-categories" style="display: none;">
+        <h1 class="display-text mb-24">CATEGORIES</h1>
+        <button class="btn btn-primary" onclick="createCategory()">Add new category</button>
+        
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="categories-table-body">
+                <!-- JS Render -->
+            </tbody>
+        </table>
+    </section>
+
+    <!-- USERS TAB -->
+    <section id="admin-users" style="display: none;">
+        <h1 class="display-text mb-24">USERS</h1>
+        <div style="display: flex; gap: 16px;">
+            <button class="btn btn-outline" onclick="exportUsers()">Export CSV</button>
+            <button class="btn btn-primary" onclick="importUsers()">Import CSV</button>
+        </div>
+
+        <table class="admin-table mt-24">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Is Staff</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="users-table-body">
+                <!-- JS Render -->
+            </tbody>
+        </table>
+
+        <div class="users-pagination mt-24">
+            <button id="users-prev-btn" class="btn btn-outline" onclick="goToPreviousUsersPage()">Previous</button>
+            <span id="users-page-info">Page 1 / 1 (0 users)</span>
+            <button id="users-next-btn" class="btn btn-outline" onclick="goToNextUsersPage()">Next</button>
+        </div>
+    </section>
+
+    <!-- POSTS TAB -->
+    <section id="admin-posts" style="display: none;">
+        <h1 class="display-text mb-24">POSTS (IMPORT/EXPORT)</h1>
+        <div style="display: flex; gap: 16px;">
+            <button class="btn btn-outline" onclick="exportPosts()">Export Posts Data</button>
+            <button class="btn btn-primary" onclick="importPosts()">Import Posts Data</button>
+        </div>
+
+        <table class="admin-table mt-24">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Category</th>
+                    <th>Likes Count</th>
+                    <th>Bookmarks Count</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="posts-table-body">
+                <!-- JS Render -->
+            </tbody>
+        </table>
+
+        <div class="posts-pagination mt-24">
+            <button id="posts-prev-btn" class="btn btn-outline" onclick="goToPreviousPostsPage()">Previous</button>
+            <span id="posts-page-info">Page 1 / 1 (0 posts)</span>
+            <button id="posts-next-btn" class="btn btn-outline" onclick="goToNextPostsPage()">Next</button>
+        </div>
+    </section>
+
+  </main>
+</div>
+
+<style>
+.admin-dashboard {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 48px;
+    align-items: start;
+}
+
+@media (max-width: 880px) {
+    .admin-dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+.admin-nav a {
+    text-decoration: none;
+    color: var(--ink);
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.admin-nav a:hover, .admin-nav a.active {
+    background: #E5E5E5;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+.admin-table th, .admin-table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.admin-table th {
+    font-weight: bold;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.badge-red {
+    background-color: #D30005;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.badge-gray {
+    background-color: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.users-pagination {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#users-page-info {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+#users-prev-btn:disabled,
+#users-next-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.posts-pagination {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#posts-page-info {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+#posts-prev-btn:disabled,
+#posts-next-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/api.js"></script>
+<script src="/static/js/admin.js"></script>
+{% endblock %}

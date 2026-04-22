@@ -14,12 +14,73 @@ from rest_framework import serializers
 from django.utils.dateparse import parse_date
 from django.http import StreamingHttpResponse
 from django.utils import timezone
+from core.pagination import CustomLimitOffsetPagination
+from apps.admin.serializers.user_serializers import AdminUserListSerializer
 
 CSV_FIELDS = [
     "id", "username", "email",
     "first_name", "last_name",
     "is_active", "is_staff", "date_joined",
 ]
+
+
+class AdminUsersListView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    @extend_schema(
+        summary="List Users (Admin)",
+        description="Return paginated list of users for admin dashboard.",
+        parameters=[
+            OpenApiParameter(
+                name="limit",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Number of users per page (max 100).",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="offset",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Number of users to skip.",
+                required=False,
+            ),
+        ],
+        responses={
+            200: OpenApiResponse(
+                response=inline_serializer(
+                    name="AdminUsersPaginatedResponse",
+                    fields={
+                        "count": serializers.IntegerField(),
+                        "next": serializers.URLField(allow_null=True),
+                        "previous": serializers.URLField(allow_null=True),
+                        "results": AdminUserListSerializer(many=True),
+                    },
+                ),
+                description="Paginated users list",
+            ),
+            401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
+                response=inline_serializer(
+                    name="AdminUsersUnauthorizedError",
+                    fields={"detail": serializers.CharField()},
+                ),
+            ),
+            403: OpenApiResponse(
+                description="Forbidden - User is not an admin",
+                response=inline_serializer(
+                    name="AdminUsersForbiddenError",
+                    fields={"detail": serializers.CharField()},
+                ),
+            ),
+        },
+    )
+    def get(self, request):
+        queryset = User.objects.all().order_by("-date_joined", "-id")
+        paginator = CustomLimitOffsetPagination()
+        paginated_qs = paginator.paginate_queryset(queryset, request)
+        serializer = AdminUserListSerializer(paginated_qs, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 class BanUserView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]

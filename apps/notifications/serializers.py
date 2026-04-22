@@ -23,7 +23,7 @@ class NotificationsListSerializer(serializers.ModelSerializer):
         fields = ['id', 'type', 'target_id', 'target_type', 'actor_username', 'post_id', 'is_read', 'created_at']
         read_only_fields = ['id', 'actor_username', 'is_read', 'created_at']
 
-    def get_post_id(self, obj):
+    def get_post_id(self, obj) -> int | None:
         if obj.target_type == 'post':
             return obj.target_id
         if obj.target_type == 'comment':
