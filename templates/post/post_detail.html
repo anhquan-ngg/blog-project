@@ -103,6 +103,199 @@
   window.POST_ID = Number("{{ slug|escapejs }}");
   window.POST_SLUG = "{{ slug|escapejs }}";
 </script>
+<style>
+/* ── Comment item ────────────────────────────────────────────────────────── */
+.comment-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #CACACB;
+}
+
+.comment-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.comment-author-name {
+  font-family: "Helvetica Now Text Medium", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #111111;
+}
+
+.comment-date {
+  font-size: 12px;
+  font-weight: 400;
+  color: #707072;
+}
+
+.comment-content {
+  font-family: "Helvetica Now Text", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: #111111;
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comment-image {
+  max-width: 200px;
+  display: block;
+  margin: 0 0 10px;
+}
+
+.comment-empty {
+  font-size: 14px;
+  color: #707072;
+  padding: 16px 0;
+}
+
+/* ── Action buttons row ──────────────────────────────────────────────────── */
+.comment-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.comment-action-btn {
+  border: 1.5px solid #CACACB;
+  background: transparent;
+  color: #111111;
+  border-radius: 30px;
+  height: 30px;
+  padding: 0 14px;
+  font-family: "Helvetica Now Text Medium", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.comment-action-btn:hover {
+  border-color: #707072;
+  background: #F5F5F5;
+}
+
+/* Delete — subtle red on hover */
+.comment-action-btn--delete {
+  color: #707072;
+  border-color: #E5E5E5;
+}
+.comment-action-btn--delete:hover {
+  color: #D30005;
+  border-color: #CACACB;
+  background: #F5F5F5;
+}
+
+/* Save — filled primary */
+.comment-action-btn--save {
+  background: #111111;
+  color: #ffffff;
+  border-color: #111111;
+}
+.comment-action-btn--save:hover {
+  background: #707072;
+  border-color: #707072;
+}
+
+/* ── Inline edit textarea ────────────────────────────────────────────────── */
+.comment-edit-textarea {
+  width: 100%;
+  border: none;
+  border-bottom: 1.5px solid #111111;
+  background: transparent;
+  font-family: "Helvetica Now Text", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: #111111;
+  resize: vertical;
+  padding: 6px 0;
+  margin-bottom: 10px;
+  outline: none;
+}
+
+/* ── Replies link ────────────────────────────────────────────────────────── */
+.comment-replies-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: "Helvetica Now Text Medium", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #707072;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: color 0.2s ease;
+}
+
+.comment-replies-link:hover {
+  color: #111111;
+}
+
+/* ── Replies container (nested) ─────────────────────────────────────────── */
+.comment-replies-container {
+  display: none;
+  margin-top: 12px;
+  padding-left: 20px;
+  border-left: 2px solid #E5E5E5;
+}
+
+.comment-reply-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #F5F5F5;
+}
+
+.comment-reply-item:last-child {
+  border-bottom: none;
+  padding-bottom: 4px;
+}
+
+/* ── Reply-mode banner ───────────────────────────────────────────────────── */
+.reply-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #111111;
+  color: #ffffff;
+  padding: 8px 16px;
+  font-family: "Helvetica Now Text Medium", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  margin-bottom: -1px; /* flush with form top */
+}
+
+.reply-banner-cancel {
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,0.35);
+  color: #ffffff;
+  border-radius: 30px;
+  padding: 2px 12px;
+  font-family: "Helvetica Now Text Medium", Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  white-space: nowrap;
+}
+
+.reply-banner-cancel:hover {
+  border-color: #ffffff;
+  background: rgba(255,255,255,0.1);
+}
+</style>
 {% endblock %} {% block scripts %}
 <script src="/static/js/api.js"></script>
 <script src="/static/js/post_detail.js"></script>

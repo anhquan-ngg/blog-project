@@ -22,7 +22,6 @@ async function fetchApi(endpoint, options = {}) {
   const { redirectOn401 = true, ...fetchOptions } = options;
   const url = endpoint.startsWith("http") ? endpoint : `${API_BASE}${endpoint}`;
 
-  // Trích xuất token từ cookie (nếu có)
   const token = getCookie("auth_token");
 
   let headers = {

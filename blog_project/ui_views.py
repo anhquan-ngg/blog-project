@@ -32,8 +32,5 @@ def profile_page(request):
 def library_page(request):
     return render(request, "library.html")
 
-
-@login_required(login_url="/login/")
-@user_passes_test(lambda u: u.is_staff, login_url="/login/")
 def admin_portal_page(request):
     return render(request, "admin_portal.html")

@@ -421,19 +421,28 @@ class PostDetailUpdateDeleteView(APIView):
         post.save(update_fields=['is_deleted', 'deleted_at'])
         
         # Xoá rác Notification liên quan đến post (Ví dụ: thông báo người khác đã comment vào bài, hoặc like bài này)
-        Notification.objects.filter(
-            target_id=post.id,
-            target_type='post'
-        ).delete()
+        import logging
+        from django.db import DatabaseError
+        logger = logging.getLogger(__name__)
 
-        # Xoá notifications của các comments thuộc post này
-        from apps.comments.models import Comment
-        comment_ids = Comment.objects.filter(post=post).values_list('id', flat=True)
-        if comment_ids:
+        try:
             Notification.objects.filter(
-                target_id__in=list(comment_ids),
-                target_type='comment'
+                target_id=post.id,
+                target_type='post'
             ).delete()
+
+            # Xoá notifications của các comments thuộc post này
+            from apps.comments.models import Comment
+            comment_ids = Comment.objects.filter(post=post).values_list('id', flat=True)
+            if comment_ids:
+                Notification.objects.filter(
+                    target_id__in=list(comment_ids),
+                    target_type='comment'
+                ).delete()
+        except DatabaseError as e:
+            logger.error(f"Database error deleting notifications for post {post.id} or its comments: {e}")
+        except Exception as e:
+            logger.error(f"Error deleting notifications for post {post.id} or its comments: {e}")
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class PostSearchView(APIView):

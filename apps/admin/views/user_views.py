@@ -379,7 +379,7 @@ class ImportUsersFromCSVView(APIView):
             401: OpenApiResponse(
                 description="Unauthorized - Token is missing or invalid",
                 response = inline_serializer(
-                    name="ImportUsersToCSVUnauthorizedError",
+                    name="ImportUsersFromCSVUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 examples=[
@@ -392,7 +392,7 @@ class ImportUsersFromCSVView(APIView):
             403: OpenApiResponse(
                 description="Forbidden - User is not an admin",
                 response = inline_serializer(
-                    name="ImportUsersToCSVForbiddenError",
+                    name="ImportUsersFromCSVForbiddenError",
                     fields={"detail": serializers.CharField()}
                 ),
                 examples=[

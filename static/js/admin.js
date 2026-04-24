@@ -1,4 +1,13 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const res = await fetchApi('/auth/me/');
+        console.log('Auth check response:', res);
+        if (!res.data.is_staff){
+            window.location.href = '/'; // Not an admin, redirect to home
+        }
+    } catch (err){
+        window.location.href = '/login/'; // Redirect to login if not authenticated
+    }
     switchAdminTab('dashboard');
 });
 
@@ -66,7 +75,7 @@ async function loadCategoriesAdmin() {
         tbody.innerHTML = res.data.map(cat => `
             <tr>
                 <td>${cat.id}</td>
-                <td>${cat.name}</td>
+                <td>${escapeHtml(cat.name)}</td>
                 <td>
                     <button class="btn btn-outline js-category-edit" data-id="${cat.id}" data-name="${encodeURIComponent(cat.name)}" style="padding: 6px 12px; border-radius: 30px;">Edit</button>
                     <button class="btn btn-outline js-category-delete" data-id="${cat.id}" style="padding: 6px 12px; border-radius: 30px; color: #D30005; border-color: #D30005;">Delete</button>
@@ -183,11 +192,11 @@ async function loadUsersAdmin(offset = 0) {
 
         tbody.innerHTML = res.data.results.map(user => `
             <tr>
-                <td>${user.id}</td>
-                <td>${user.username}</td>
-                <td>${user.email}</td>
-                <td>${user.first_name}</td>
-                <td>${user.last_name}</td>
+                <td>${escapeHtml(String(user.id))}</td>
+                <td>${escapeHtml(user.username)}</td>
+                <td>${escapeHtml(user.email)}</td>
+                <td>${escapeHtml(user.first_name || '')}</td>
+                <td>${escapeHtml(user.last_name || '')}</td>
                 <td>${user.is_staff ? 'Yes' : 'No'}</td>
                 <td>
                     <span class="${user.is_active ? 'badge-gray' : 'badge-red'}">
@@ -277,9 +286,9 @@ async function loadPostsAdmin(offset = 0) {
         tbody.innerHTML = res.data.results.map(post => `
             <tr>
                 <td>${post.id}</td>
-                <td>${post.title}</td>
-                <td>${post.author?.username || '-'}</td>
-                <td>${post.category?.name || '-'}</td>
+                <td>${escapeHtml(post.title)}</td>
+                <td>${escapeHtml(post.author?.username || '-')}</td>
+                <td>${escapeHtml(post.category?.name || '-')}</td>
                 <td>${post.likes_count}</td>
                 <td>${post.bookmarks_count}</td>
                 <td>${new Date(post.created_at).toLocaleDateString()}</td>
@@ -362,11 +371,30 @@ function pickFile(accept = '.csv') {
         input.type = 'file';
         input.accept = accept;
         input.style.display = 'none';
+        let resolved = false;
+
+        const cleanup = () => {
+            if (resolved) return;
+            resolved = true;
+            input.remove();
+        }
 
         input.addEventListener('change', () => {
             const selectedFile = input.files && input.files.length ? input.files[0] : null;
-            input.remove();
+            cleanup();
             resolve(selectedFile);
+        }, { once: true });
+
+        // Handle cancel - focus returns to window after dialog closes
+        window.addEventListener('focus', () => {
+            setTimeout(() => {
+                if (resolved) return;
+                if (!input.files || input.files.length === 0) {
+                    resolved = true;
+                    cleanup();
+                    resolve(null);
+                }
+            }, 300);
         }, { once: true });
 
         document.body.appendChild(input);

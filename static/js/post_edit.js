@@ -1,8 +1,8 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   if (typeof window.updateNavAuth === "function") window.updateNavAuth();
 
   // Elements
-  const form = document.getElementById("create-post-form");
+  const form = document.getElementById("edit-post-form");
   const banner = document.getElementById("pc-banner");
   const tagsSearch = document.getElementById("tags-search");
   const tagsDropdown = document.getElementById("tags-dropdown");
@@ -10,17 +10,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const tplBlock = document.getElementById("tpl-block");
   const blocksList = document.getElementById("blocks-list");
   
+  const postId = form.dataset.postId;
+  const titleInput = document.getElementById("post-title");
+  const titleCount = document.getElementById("title-count");
+  
   // Tags Picker State
   let allTags = [];
   let selectedTags = new Set();
   let blockCounter = 0;
 
   // Initialization
-  loadCategories();
-  loadTags();
-  
-  // Add first empty block
-  addBlock();
+  await loadCategories();
+  await loadTags();
+  await loadPostData(postId);
 
   // Block management
   document.getElementById("btn-add-block").addEventListener("click", () => {
@@ -44,8 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Title character count
-  const titleInput = document.getElementById("post-title");
-  const titleCount = document.getElementById("title-count");
   titleInput.addEventListener("input", () => {
     titleCount.textContent = titleInput.value.length;
     if (titleInput.value.length > 0) {
@@ -81,9 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let isUploading = false;
 
     blockEls.forEach((block) => {
-      const activePill = block.querySelector(".pc-type-pill--active");
-      if (!activePill) return;
-      const activeType = activePill.dataset.type;
+      const activeType = block.querySelector(".pc-type-pill--active").dataset.type;
       
       if (activeType === "paragraph") {
         const text = block.querySelector(".pc-block-textarea").value.trim();
@@ -153,19 +151,18 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     try {
-      const res = await fetchApi("/posts/", {
-        method: "POST",
+      const res = await fetchApi(`/posts/${postId}/`, {
+        method: "PUT",
         body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        showBanner("Post created successfully!", "ok");
+        showBanner("Post updated successfully!", "ok");
         setTimeout(() => {
           window.location.href = `/post/${res.data.id}/`;
         }, 1000);
       } else {
-        const userMessage = res.data?.message || res.data?.detail || "Cannot create post.";
-        showBanner(`Error: ${userMessage}`, "error");
+        showBanner(`Error: ${JSON.stringify(res.data) || "Cannot update post."}`, "error");
         btnSubmit.disabled = false;
         btnLabel.style.display = "inline-block";
         btnSpinner.style.display = "none";
@@ -210,7 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
           res.data
             .map(
               (cat) =>
-                `<option value="${escapeHtml(String(cat.id))}">${escapeHtml(cat.name)}</option>`,
+                `<option value="${cat.id}">${cat.name}</option>`,
             )
             .join("");
       }
@@ -234,6 +231,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  async function loadPostData(id) {
+    try {
+      const res = await fetchApi(`/posts/${id}/`);
+      if (res.ok) {
+        const post = res.data;
+        
+        // title
+        titleInput.value = post.title;
+        titleCount.textContent = post.title.length;
+        
+        // category
+        document.getElementById("post-category").value = post.category?.id || "";
+        
+        // tags
+        if (post.tags) {
+          post.tags.forEach(t => selectedTags.add(t.id));
+          renderSelectedTags();
+          // update dropdown checkboxes visually
+          selectedTags.forEach(tid => {
+            const cb = tagsDropdown.querySelector(`input[value="${tid}"]`);
+            if (cb) cb.checked = true;
+          });
+        }
+        
+        // blocks
+        if (post.content && post.content.length > 0) {
+          post.content.forEach(blockData => {
+            addBlock(blockData);
+          });
+        } else {
+          addBlock();
+        }
+        
+      } else {
+        showBanner("Failed to load post data.", "error");
+      }
+    } catch (err) {
+      showBanner(`Error: ${err.message}`, "error");
+    }
+  }
+
   function renderTagsDropdown(query = "") {
     if (!allTags.length) return;
     
@@ -247,12 +285,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tagsDropdown.innerHTML = filteredTags.map(tag => {
       const isChecked = selectedTags.has(tag.id) ? "checked" : "";
-      const safeName = escapeHtml(tag.name);
-      const safeId = escapeHtml(tag.id);
       return `
         <label class="pc-tag-option">
-          <input type="checkbox" value="${safeId}" data-name="${safeName}" ${isChecked} onchange="window.toggleTag(this)" />
-          <span>${safeName}</span>
+          <input type="checkbox" value="${tag.id}" data-name="${tag.name}" ${isChecked} onchange="window.toggleTag(this)" />
+          <span>${tag.name}</span>
         </label>
       `;
     }).join("");
@@ -288,11 +324,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const html = Array.from(selectedTags).map(id => {
       const tag = allTags.find(t => t.id === id);
       if (!tag) return "";
-      const safeName = escapeHtml(tag.name);
       return `
         <span class="pc-tag-pill">
-          ${safeName}
-          <button type="button" class="pc-tag-pill__remove" onclick="window.removeTag(${tag.id})" aria-label="Remove tag ${safeName}">&times;</button>
+          ${tag.name}
+          <button type="button" class="pc-tag-pill__remove" onclick="window.removeTag(${tag.id})" aria-label="Remove tag ${tag.name}">&times;</button>
         </span>
       `;
     }).join("");
@@ -301,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ── Block Management ──
-  function addBlock() {
+  function addBlock(initialData = null) {
     const clone = tplBlock.content.cloneNode(true);
     const blockEl = clone.querySelector(".pc-block");
     blockEl.dataset.blockIndex = ++blockCounter;
@@ -353,6 +388,44 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     blocksList.appendChild(clone);
+
+    // If initial data is provided, populate it
+    if (initialData) {
+      const type = initialData.type;
+      const targetPill = blockEl.querySelector(`.pc-type-pill[data-type="${type}"]`);
+      if (targetPill) {
+        targetPill.click();
+      }
+
+      const data = initialData.data || {};
+      if (type === "paragraph") {
+        textarea.value = data.text || "";
+        setTimeout(() => {
+          textarea.style.height = 'auto';
+          textarea.style.height = (textarea.scrollHeight) + 'px';
+        }, 10);
+      } else if (type === "heading") {
+        blockEl.querySelector(".pc-heading-text").value = data.text || "";
+        if (data.level) blockEl.querySelector(".pc-heading-level").value = data.level;
+      } else if (type === "image") {
+        const dropzone = blockEl.querySelector(".pc-dropzone");
+        const idleView = dropzone.querySelector(".pc-dropzone__idle");
+        const previewView = dropzone.querySelector(".pc-dropzone__preview");
+        const imgPreview = dropzone.querySelector(".pc-dropzone__img");
+        const filenameLabel = dropzone.querySelector(".pc-dropzone__filename");
+        
+        dropzone.dataset.state = "uploaded";
+        dropzone.dataset.fileId = data.file?.id || data.file_id || "";
+        
+        idleView.style.display = "none";
+        previewView.style.display = "block";
+        imgPreview.src = data.file?.url || "";
+        filenameLabel.textContent = data.file?.filename || data.file?.name || "image";
+
+        if (data.caption) blockEl.querySelector(".pc-image-caption").value = data.caption;
+        if (data.alignment) blockEl.querySelector(".pc-image-align").value = data.alignment;
+      }
+    }
   }
 
   function setupDropzone(dropzone) {
@@ -376,18 +449,6 @@ document.addEventListener("DOMContentLoaded", () => {
     dropzone.addEventListener("click", (e) => {
       if (dropzone.dataset.state === "idle") {
         input.click();
-      }
-    });
-
-    imgPreview.addEventListener('load', () => {
-      if (imgPreview.src.startsWith('blob:')) {
-        URL.revokeObjectURL(imgPreview.src);
-      }
-    });
-
-    imgPreview.addEventListener('error', () => {
-      if (imgPreview.src.startsWith('blob:')) {
-        URL.revokeObjectURL(imgPreview.src);
       }
     });
 
@@ -432,9 +493,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     function resetDropzone() {
-      if (imgPreview.src.startsWith('blob:')) {
-        URL.revokeObjectURL(imgPreview.src);
-      }
       input.value = "";
       dropzone.dataset.state = "idle";
       dropzone.dataset.fileId = "";
@@ -461,9 +519,6 @@ document.addEventListener("DOMContentLoaded", () => {
       previewView.style.display = "block";
       
       filenameLabel.textContent = file.name;
-      if (imgPreview.src.startsWith('blob:')) {
-        URL.revokeObjectURL(imgPreview.src);
-      }
       imgPreview.src = URL.createObjectURL(file);
       
       uploadStatus.style.display = "block";

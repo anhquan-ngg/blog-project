@@ -363,8 +363,17 @@ class CommentUpdateDeleteAPIView(UpdateAPIView, DestroyAPIView):
         
         # Don't use transaction atomic here to avoid rollback of comment deletion if notification deletion fails. We can afford to have orphaned notifications, but not undeleted comments.
         # Use celery in future if this becomes a performance bottleneck.
-        from apps.notifications.models import Notification
-        Notification.objects.filter(
-            target_id=instance.id,
-            target_type='comment'
-        ).delete()
+        import logging
+        from django.db import DatabaseError
+        logger = logging.getLogger(__name__)
+
+        try:
+            from apps.notifications.models import Notification
+            Notification.objects.filter(
+                target_id=instance.id,
+                target_type='comment'
+            ).delete()
+        except DatabaseError as e:
+            logger.error(f"Database error deleting notifications for comment {instance.id} (target_type=comment): {e}")
+        except Exception as e:
+            logger.error(f"Error deleting notifications for comment {instance.id} (target_type=comment): {e}")

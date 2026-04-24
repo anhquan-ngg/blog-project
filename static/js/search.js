@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const catSelect = document.getElementById('filter-category');
     const sortSelect = document.getElementById('sort-order');
 
+    if (!form || !input || !catSelect || !sortSelect) {
+        console.error('Search: Required DOM elements not found');
+        return;
+    }
     // Run initial search
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('q') || '';
@@ -20,7 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCategories(category).then(() => {
         sortSelect.value = ordering;
         performSearch(query, category, ordering);
-    });
+    }).catch(err => {
+        console.error('Error loading categories:', err);
+        performSearch(query, category, ordering);
+    })
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -87,36 +94,42 @@ async function performSearch(query, categoryId, ordering) {
         // if user typed 1 char and it was ignored, maybe we just list posts.
     }
 
-    const res = await fetchApi(url);
-    
-    loading.style.display = 'none';
+    try {
+        const res = await fetchApi(url);
 
-    if (res.ok) {
-        const posts = res.data.results || [];
-        const count = res.data.count || 0;
-        
-        countSpan.textContent = `(${count} results)`;
+        if (res.ok) {
+            const posts = res.data.results || [];
+            const count = res.data.count || 0;
+            
+            countSpan.textContent = `(${count} results)`;
 
-        if (posts.length === 0) {
-            resultsContainer.innerHTML = `<h3 class="muted" style="grid-column: 1/-1; text-align: center;">No matching posts found.</h3>`;
-        } else {
-            resultsContainer.innerHTML = posts.map(post => `
-                <article class="post-card">
-                    <a href="/post/${post.slug || post.id}/">
-                        <div class="post-img-cover">
-                            <div class="placeholder-img" style="background:#f5f5f5; width:100%; aspect-ratio:1/1;"></div>
-                        </div>
-                    </a>
-                    <div class="post-meta">
+            if (posts.length === 0) {
+                resultsContainer.innerHTML = `<h3 class="muted" style="grid-column: 1/-1; text-align: center;">No matching posts found.</h3>`;
+            } else {
+                resultsContainer.innerHTML = posts.map(post => `
+                    <article class="post-card">
                         <a href="/post/${post.slug || post.id}/">
-                            <h3 class="post-title">${escapeHtml(post.title)}</h3>
+                            <div class="post-img-cover">
+                                <div class="placeholder-img" style="background:#f5f5f5; width:100%; aspect-ratio:1/1;"></div>
+                            </div>
                         </a>
-                        <p class="post-desc muted">${escapeHtml(post.excerpt || (post.content && typeof post.content === 'string' ? post.content.substring(0, 100) : 'Post details...'))}</p>
-                        <p class="post-date text-xs">${new Date(post.created_at).toLocaleDateString('vi-VN')}</p>
-                    </div>
-                </article>
-            `).join('');        }
-    } else {
+                        <div class="post-meta">
+                            <a href="/post/${post.slug || post.id}/">
+                                <h3 class="post-title">${escapeHtml(post.title)}</h3>
+                            </a>
+                            <p class="post-desc muted">${escapeHtml(post.excerpt || (post.content && typeof post.content === 'string' ? post.content.substring(0, 100) : 'Post details...'))}</p>
+                            <p class="post-date text-xs">${new Date(post.created_at).toLocaleDateString('vi-VN')}</p>
+                        </div>
+                    </article>
+                `).join('');       
+            }
+        } else {
+            resultsContainer.innerHTML = `<h3 class="error" style="grid-column: 1/-1; text-align: center;">An error occurred while searching.</h3>`;
+        }
+    } catch (error) {
+        console.error('Error fetching search results:', error);
         resultsContainer.innerHTML = `<h3 class="error" style="grid-column: 1/-1; text-align: center;">An error occurred while searching.</h3>`;
+    } finally {
+        loading.style.display = 'none';
     }
 }

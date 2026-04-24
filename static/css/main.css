@@ -114,6 +114,7 @@ body {
   max-height: 420px;
   background: #ffffff;
   border: 1px solid #cacacb;
+  border-radius: 16px;
   display: none;
   z-index: 200;
 }
@@ -382,6 +383,13 @@ h2 {
 
 .btn-outline:hover,
 .btn-ghost:hover {
+  border-color: var(--ink);
+  background: var(--bg);
+}
+
+.btn-outline.active {
+  background: var(--ink);
+  color: var(--bg);
   border-color: var(--ink);
 }
 
@@ -654,23 +662,6 @@ h2 {
   margin-bottom: 32px;
   border-bottom: 1px solid var(--line);
   padding-bottom: 16px;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--ink);
-}
-
-.btn-outline:hover {
-  border-color: var(--ink);
-  background: var(--bg);
-}
-
-.btn-outline.active {
-  background: var(--ink);
-  color: var(--bg);
-  border-color: var(--ink);
 }
 
 .post-tags-list {

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Create New Post | Blog UI{% endblock %}
+{% block title %}Edit Post | Blog UI{% endblock %}
 
 {% block content %}
 <div class="pc-page">
@@ -7,14 +7,14 @@
   <!-- Page Header -->
   <header class="pc-header">
     <p class="pc-header__eyebrow">WRITE</p>
-    <h1 class="pc-header__title">Create New Post</h1>
-    <p class="pc-header__sub">Share your knowledge with the world.</p>
+    <h1 class="pc-header__title">Edit Post</h1>
+    <p class="pc-header__sub">Update your knowledge to the world.</p>
   </header>
 
   <!-- Global error / success banner -->
   <div id="pc-banner" class="pc-banner" role="alert" aria-live="polite" style="display:none"></div>
 
-  <form id="create-post-form" class="pc-form" novalidate>
+  <form id="edit-post-form" class="pc-form" data-post-id="{{ pk }}" novalidate>
 
     <!-- ── SECTION 1: Meta ─────────────────────────────────────────────── -->
     <section class="pc-section">
@@ -86,7 +86,7 @@
     <!-- ── Submit ──────────────────────────────────────────────────────── -->
     <div class="pc-form__actions">
       <button type="submit" class="pc-btn pc-btn--primary" id="btn-submit">
-        <span id="btn-submit-label">Publish Post</span>
+        <span id="btn-submit-label">Save Changes</span>
         <svg id="btn-submit-spinner" class="pc-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
       </button>
     </div>
@@ -181,7 +181,7 @@
 
 <style>
 /* ════════════════════════════════════════════════════════════════════
-   POST CREATE — Nike Design System
+   POST EDIT — Nike Design System
    ════════════════════════════════════════════════════════════════════ */
 
 /* ── Page shell ── */
@@ -546,5 +546,5 @@
 
 {% block scripts %}
 <script src="/static/js/api.js"></script>
-<script src="/static/js/post_create.js"></script>
+<script src="/static/js/post_edit.js"></script>
 {% endblock %}
