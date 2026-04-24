@@ -35,7 +35,9 @@ class TagListCreateView(generics.ListCreateAPIView):
                 description="Search tag by name (icontains)"
             )
         ],
-        responses={200: TagSerializer(many=True)}
+        responses={
+            200: TagSerializer(many=True)
+        }
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
@@ -47,39 +49,37 @@ class TagListCreateView(generics.ListCreateAPIView):
         responses={
             201: TagSerializer,
             400: OpenApiResponse(
+                description="Bad Request - Validation Error",
                 response=inline_serializer(
                     name="TagCreateValidationError",
                     fields={
                         "name": serializers.ListField(child=serializers.CharField(), required=False)
                     }
                 ),
-                description="Bad Request",
                 examples=[
                     OpenApiExample(
-                        name="Duplicate name",
-                        summary="Name already exists",
+                        "Duplicate name",
                         value={"name": ["A tag with this name already exists."]}
                     ),
                     OpenApiExample(
-                        name="Missing name",
-                        summary="Missing name field",
+                        "Missing name",
                         value={"name": ["This field is required."]}
                     )
                 ]
             ),
             401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
                 response=inline_serializer(
                     name="TagCreateUnauthorizedError",
-                    fields={"detail": serializers.CharField()}
+                    fields={"detail": serializers.CharField(default="Authentication credentials were not provided.")}
                 ),
-                description="Unauthorized",
                 examples=[
                     OpenApiExample(
-                        name="Unauthorized",
+                        "Unauthorized",
                         value={"detail": "Authentication credentials were not provided."}
                     )
                 ]
-            )
+            ),
         }
     )
     def post(self, request, *args, **kwargs):
@@ -103,50 +103,62 @@ class TagDetailUpdateDeleteView(mixins.UpdateModelMixin, mixins.DestroyModelMixi
         summary="Update tag",
         description="Updates tag name. Slug will be regenerated. Name must be unique.",
         request=TagSerializer,
-        responses={200: TagSerializer,
+        responses={
+            200: TagSerializer,
             400: OpenApiResponse(
+                description="Bad Request - Validation Error",
                 response=inline_serializer(
                     name="TagUpdateValidationError",
                     fields={
                         "name": serializers.ListField(child=serializers.CharField(), required=False)
                     }
                 ),
-                description="Bad Request",
                 examples=[
                     OpenApiExample(
-                        name="Duplicate name",
-                        summary="Name already exists",
+                        "Duplicate name",
                         value={"name": ["A tag with this name already exists."]}
                     ),
                     OpenApiExample(
-                        name="Missing name",
-                        summary="Missing name field",
+                        "Missing name",
                         value={"name": ["This field is required."]}
                     )
                 ]
             ),
             401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
                 response=inline_serializer(
                     name="TagUpdateUnauthorizedError",
-                    fields={"detail": serializers.CharField()}
+                    fields={"detail": serializers.CharField(default="Authentication credentials were not provided.")}
                 ),
-                description="Unauthorized",
                 examples=[
                     OpenApiExample(
-                        name="Unauthorized",
+                        "Unauthorized",
                         value={"detail": "Authentication credentials were not provided."}
                     )
                 ]
             ),
-            404: OpenApiResponse(
+            403: OpenApiResponse(
+                description="Forbidden - You do not have permission",
                 response=inline_serializer(
-                    name="TagUpdateNotFoundError",
-                    fields={"detail": serializers.CharField()}
+                    name="TagUpdateForbiddenError",
+                    fields={"detail": serializers.CharField(default="You do not have permission to perform this action.")}
                 ),
-                description="Not Found",
                 examples=[
                     OpenApiExample(
-                        name="Not Found",
+                        "Forbidden",
+                        value={"detail": "You do not have permission to perform this action."}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="Not Found - Tag does not exist",
+                response=inline_serializer(
+                    name="TagUpdateNotFoundError",
+                    fields={"detail": serializers.CharField(default="Not found.")}
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Not Found",
                         value={"detail": "Not found."}
                     )
                 ]
@@ -160,29 +172,42 @@ class TagDetailUpdateDeleteView(mixins.UpdateModelMixin, mixins.DestroyModelMixi
         summary="Delete tag",
         description="Performs a hard delete of the tag. All post-tag associations will be deleted (cascade).",
         responses={
-            204: OpenApiTypes.NONE, 
+            204: OpenApiTypes.NONE,
             401: OpenApiResponse(
+                description="Unauthorized - Token is missing or invalid",
                 response=inline_serializer(
                     name="TagDeleteUnauthorizedError",
-                    fields={"detail": serializers.CharField()}
+                    fields={"detail": serializers.CharField(default="Authentication credentials were not provided.")}
                 ),
-                description="Unauthorized",
                 examples=[
                     OpenApiExample(
-                        name="Unauthorized",
+                        "Unauthorized",
                         value={"detail": "Authentication credentials were not provided."}
                     )
                 ]
             ),
-            404: OpenApiResponse(
+            403: OpenApiResponse(
+                description="Forbidden - You do not have permission",
                 response=inline_serializer(
-                    name="TagDeleteNotFoundError",
-                    fields={"detail": serializers.CharField()}
+                    name="TagDeleteForbiddenError",
+                    fields={"detail": serializers.CharField(default="You do not have permission to perform this action.")}
                 ),
-                description="Not Found",
                 examples=[
                     OpenApiExample(
-                        name="Not Found",
+                        "Forbidden",
+                        value={"detail": "You do not have permission to perform this action."}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="Not Found - Tag does not exist",
+                response=inline_serializer(
+                    name="TagDeleteNotFoundError",
+                    fields={"detail": serializers.CharField(default="Not found.")}
+                ),
+                examples=[
+                    OpenApiExample(
+                        "Not Found",
                         value={"detail": "Not found."}
                     )
                 ]

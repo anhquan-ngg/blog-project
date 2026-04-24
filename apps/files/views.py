@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, inline_serializer
+from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer, OpenApiExample, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
 from .serializers import FileUploadSerializer, FileResponseSerializer
@@ -35,10 +36,24 @@ class FileUploadView(APIView):
             }
         },
         responses={
-            201: FileResponseSerializer,
+            201: OpenApiResponse(
+                response=FileResponseSerializer,
+                description="Created",
+                examples=[
+                    OpenApiExample(
+                        name="Success Example",
+                        summary="Successfully created file record",
+                        value={
+                            "id": 15,
+                            "url": "https://s3.amazonaws.com/bucket/uploads/1/abc123.jpg",
+                            "uploaded_at": "2024-01-16T08:30:00Z"
+                        }
+                    )
+                ]
+            ),
             400: OpenApiResponse(
                 response=inline_serializer(
-                    name="UploadValidationError",
+                    name="FileUploadValidationError",
                     fields={
                         "image": serializers.ListField(child=serializers.CharField(), required=False)
                     }
@@ -59,29 +74,29 @@ class FileUploadView(APIView):
             ),
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="UploadUnauthorizedError",
+                    name="FileUploadUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
                 examples=[
                     OpenApiExample(
                         name="Unauthorized",
-                        summary="Missing or invalid token",
+                        summary="Authentication credentials were not provided.",
                         value={"detail": "Authentication credentials were not provided."}
                     )
                 ]
             ),
             500: OpenApiResponse(
                 response=inline_serializer(
-                    name="UploadServerError",
+                    name="FileUploadServerError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Internal Server Error",
                 examples=[
                     OpenApiExample(
                         name="S3 Upload Error",
-                        summary="Failed to upload file to S3",
-                        value={"detail": "Failed to upload file to S3."}
+                        summary="Failed to upload file to S3 or database",
+                        value={"detail": "Failed to upload file. Please try again."}
                     )
                 ]
             )

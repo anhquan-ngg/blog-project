@@ -187,13 +187,15 @@ class PostLikeSerializer(serializers.Serializer):
             locked_post = Post.objects.select_for_update().get(pk=post.pk)
             like, created = Like.objects.get_or_create(user=request.user, post=locked_post)
             if created:
-                Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") + 1)
+                locked_post.likes_count = F("likes_count") + 1
+                locked_post.save(update_fields=["likes_count"])
                 is_liked = True
             else:
                 deleted_count, _ = like.delete()
                 if deleted_count > 0: # Check if the like was actually deleted
-                    Post.objects.filter(pk=post.pk).update(likes_count=F("likes_count") - 1)
-                    
+                    locked_post.likes_count = F("likes_count") - 1
+                    locked_post.save(update_fields=["likes_count"])
+
                     # Xoá rác Notification
                     from apps.notifications.models import Notification, NotificationType
                     Notification.objects.filter(
@@ -220,12 +222,14 @@ class PostBookmarkSerializer(serializers.Serializer):
             locked_post = Post.objects.select_for_update().get(pk=post.pk)
             bookmark, created = Bookmark.objects.get_or_create(user=request.user, post=locked_post)
             if created:
-                Post.objects.filter(pk=post.pk).update(bookmarks_count=F("bookmarks_count") + 1)
+                locked_post.bookmarks_count += 1
+                locked_post.save(update_fields=["bookmarks_count"])
                 is_bookmarked = True
             else:
                 deleted_count, _ = bookmark.delete()
                 if deleted_count > 0:
-                    Post.objects.filter(pk=post.pk).update(bookmarks_count=F("bookmarks_count") - 1)
+                    locked_post.bookmarks_count -= 1
+                    locked_post.save(update_fields=["bookmarks_count"])
                 is_bookmarked = False
         post.refresh_from_db(fields=["bookmarks_count"])
         return {

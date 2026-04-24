@@ -8,7 +8,7 @@ from .models import Category
 from apps.posts.models import Post
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, inline_serializer
+from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer, OpenApiExample, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 
 class CategoryViewSet(ViewSet):
@@ -62,7 +62,7 @@ class CategoryViewSet(ViewSet):
             ),
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="CategoryUnauthorizedError",
+                    name="CategoryCreateUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
@@ -75,7 +75,7 @@ class CategoryViewSet(ViewSet):
             ),
             403: OpenApiResponse(
                 response=inline_serializer(
-                    name="CategoryForbiddenError",
+                    name="CategoryCreateForbiddenError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Forbidden",
@@ -99,6 +99,9 @@ class CategoryViewSet(ViewSet):
         summary="Update Category",
         description="Updates an existing category name. Requires Admin privileges.",
         request=CategorySerializer,
+        parameters=[
+            OpenApiParameter("pk", OpenApiTypes.INT, location=OpenApiParameter.PATH, description="Category ID", required=True)
+        ],
         responses={
             200: CategorySerializer,
             400: OpenApiResponse(
@@ -124,7 +127,7 @@ class CategoryViewSet(ViewSet):
             ),
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="CategoryUpdateUnauthorized",
+                    name="CategoryUpdateUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
@@ -134,7 +137,7 @@ class CategoryViewSet(ViewSet):
             ),
             403: OpenApiResponse(
                 response=inline_serializer(
-                    name="CategoryUpdateForbidden",
+                    name="CategoryUpdateForbiddenError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Forbidden",
@@ -144,7 +147,7 @@ class CategoryViewSet(ViewSet):
             ),
             404: OpenApiResponse(
                 response=inline_serializer(
-                    name="CategoryNotFoundError",
+                    name="CategoryUpdateNotFoundError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Not Found",
@@ -167,6 +170,9 @@ class CategoryViewSet(ViewSet):
     @extend_schema(
         summary="Delete Category",
         description="Soft deletes a category. Only Admin can perform this. Cannot delete a category that currently has non-deleted posts.",
+        parameters=[
+            OpenApiParameter("pk", OpenApiTypes.INT, location=OpenApiParameter.PATH, description="Category ID", required=True)
+        ],
         responses={
             204: OpenApiTypes.NONE,
             400: OpenApiResponse(
@@ -181,13 +187,13 @@ class CategoryViewSet(ViewSet):
                     OpenApiExample(
                         name="Has posts",
                         summary="Category has posts",
-                        value={"non_field_errors": ["Cannot delete category 'Backend Development' because it (or its subcategories) has 28 post(s)."]}
+                        value={"non_field_errors": ["Cannot delete category 'Backend Development' because it (or its subcategories) has 28 active post(s)."]}
                     )
                 ]
             ),
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="CategoryDelUnauthorized",
+                    name="CategoryDeleteUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
@@ -197,7 +203,7 @@ class CategoryViewSet(ViewSet):
             ),
             403: OpenApiResponse(
                 response=inline_serializer(
-                    name="CategoryDelForbidden",
+                    name="CategoryDeleteForbiddenError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Forbidden",
@@ -207,7 +213,7 @@ class CategoryViewSet(ViewSet):
             ),
             404: OpenApiResponse(
                 response=inline_serializer(
-                    name="CategoryDelNotFound",
+                    name="CategoryDeleteNotFoundError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Not Found",

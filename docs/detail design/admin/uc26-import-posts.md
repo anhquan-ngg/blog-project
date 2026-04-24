@@ -25,7 +25,7 @@ Kết quả trả về thống kê: tổng dòng, số dòng thành công, số 
 | BR3 | File phải là CSV (kiểm tra MIME type và extension) → `400` nếu sai định dạng                                                   |
 | BR4 | Kích thước file tối đa 10MB → `400` nếu vượt quá                                                                               |
 | BR5 | CSV header bắt buộc: `title, content, category_name`. Author của bài import luôn là user đang thực hiện import (request.user). |
-| BR6 | Mỗi dòng lỗi (category không tồn tại, author không tồn tại, field trống...) bị skip                                            |
+| BR6 | Mỗi dòng lỗi (category không tồn tại, field trống/invalid ...) bị skip                                                         |
 | BR7 | Không rollback khi có lỗi — dùng cơ chế row-by-row, commit từng dòng thành công                                                |
 | BR8 | Trả về `200 OK` kèm thống kê ngay cả khi toàn bộ dòng bị skip                                                                  |
 | BR9 | `is_deleted` mặc định `False` nếu CSV không cung cấp                                                                           |

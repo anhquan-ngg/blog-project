@@ -50,12 +50,28 @@ class PostListCreateView(APIView):
             OpenApiParameter("category", OpenApiTypes.INT, description="Filter by category_id"),
             OpenApiParameter("author", OpenApiTypes.INT, description="Filter by author_id"),
             OpenApiParameter("tag", OpenApiTypes.STR, description="Filter by tag slug"),
-            OpenApiParameter("ordering", OpenApiTypes.STR, description="Sort by: created_at, -created_at, likes_count, -likes_count", default="-created_at"),
+            OpenApiParameter("ordering", OpenApiTypes.STR, description="Sort by: created_at, -created_at, likes_count, -likes_count, bookmarks_count, -bookmarks_count", default="-created_at"),
             OpenApiParameter("limit", OpenApiTypes.INT, description="Number of items per page", default=10),
             OpenApiParameter("offset", OpenApiTypes.INT, description="Number of items to skip", default=0),
         ],
         responses={
             200: PostListSerializer(many=True),
+            400: OpenApiResponse(
+                description="Validation error",
+                response=inline_serializer(
+                    name="PostListValidationError",
+                    fields={
+                        "category": serializers.ListField(child=serializers.CharField(), required=False),
+                        "author": serializers.ListField(child=serializers.CharField(), required=False),
+                        "ordering": serializers.ListField(child=serializers.CharField(), required=False)
+                    }
+                ),
+                examples=[
+                    OpenApiExample(name="Invalid category", value={"category": ["category must be an integer."]}),
+                    OpenApiExample(name="Invalid author", value={"author": ["author must be an integer."]}),
+                    OpenApiExample(name="Invalid ordering", value={"ordering": ["Invalid ordering. Allowed values are: created_at, -created_at, likes_count, -likes_count, bookmarks_count, -bookmarks_count"]})
+                ]
+            ),
         }
     )
     def get(self, request):
@@ -114,10 +130,19 @@ class PostListCreateView(APIView):
         request=CreatePostSerializer,
         responses={
             201: PostListSerializer,
-            400: OpenApiResponse(description="Validation error"),
+            400: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostCreateValidationError",
+                    fields={"title": serializers.ListField(child=serializers.CharField())}
+                ),
+                description="Validation error",
+                examples=[
+                    OpenApiExample(name="Validation Error", value={"title": ["This field is required."]})
+                ]
+            ),
             401: OpenApiResponse(
                 response=inline_serializer(
-                    name="CreatePostUnauthorized",
+                    name="PostCreateUnauthorizedError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Unauthorized",
@@ -156,7 +181,7 @@ class PostRelatedView(APIView):
             ),
             404: OpenApiResponse(
                 response=inline_serializer(
-                    name="RelatedPostNotFound",
+                    name="RelatedPostNotFoundError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Post not found",
@@ -209,7 +234,7 @@ class PostDetailUpdateDeleteView(APIView):
             200: PostDetailSerializer,
             404: OpenApiResponse(
                 response=inline_serializer(
-                    name="PostDetailNotFound",
+                    name="PostDetailNotFoundError",
                     fields={"detail": serializers.CharField()}
                 ),
                 description="Not found",
@@ -239,10 +264,46 @@ class PostDetailUpdateDeleteView(APIView):
         request=UpdatePostSerializer,
         responses={
             200: PostDetailSerializer,
-            400: OpenApiResponse(description="Validation error"),
-            401: OpenApiResponse(description="Unauthorized"),
-            403: OpenApiResponse(description="Forbidden"),
-            404: OpenApiResponse(description="Not found")
+            400: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostUpdateValidationError",
+                    fields={"title": serializers.ListField(child=serializers.CharField())}
+                ),
+                description="Validation error",
+                examples=[
+                    OpenApiExample(name="Validation error", value={"title": ["This field is required."]})
+                ]
+            ),
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostUpdateUnauthorizedError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(name="Unauthorized", value={"detail": "Authentication credentials were not provided."})
+                ]
+            ),
+            403: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostUpdateForbiddenError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Forbidden",
+                examples=[
+                    OpenApiExample(name="Forbidden", value={"detail": "You do not have permission to perform this action."})
+                ]
+            ),
+            404: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostUpdateNotFoundError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Not found",
+                examples=[
+                    OpenApiExample(name="Not found", value={"detail": "Not found."})
+                ]
+            )
         }
     )
     def put(self, request, pk):
@@ -260,10 +321,46 @@ class PostDetailUpdateDeleteView(APIView):
         request=UpdatePostSerializer,
         responses={
             200: PostDetailSerializer,
-            400: OpenApiResponse(description="Validation error"),
-            401: OpenApiResponse(description="Unauthorized"),
-            403: OpenApiResponse(description="Forbidden"),
-            404: OpenApiResponse(description="Not found")
+            400: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostPartialUpdateValidationError",
+                    fields={"title": serializers.ListField(child=serializers.CharField())}
+                ),
+                description="Validation error",
+                examples=[
+                    OpenApiExample(name="Validation error", value={"title": ["This field is required."]})
+                ]
+            ),
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostPartialUpdateUnauthorizedError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(name="Unauthorized", value={"detail": "Authentication credentials were not provided."})
+                ]
+            ),
+            403: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostPartialUpdateForbiddenError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Forbidden",
+                examples=[
+                    OpenApiExample(name="Forbidden", value={"detail": "You do not have permission to perform this action."})
+                ]
+            ),
+            404: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostPartialUpdateNotFoundError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Not found",
+                examples=[
+                    OpenApiExample(name="Not found", value={"detail": "Not found."})
+                ]
+            )
         }
     )
     def patch(self, request, pk):
@@ -280,9 +377,36 @@ class PostDetailUpdateDeleteView(APIView):
         description="Soft deletes a post by setting is_deleted to True. Only the author or an Admin can perform this action.",
         responses={
             204: OpenApiTypes.NONE,
-            401: OpenApiResponse(description="Unauthorized"),
-            403: OpenApiResponse(description="Forbidden"),
-            404: OpenApiResponse(description="Not found")
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostDeleteUnauthorizedError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(name="Unauthorized", value={"detail": "Authentication credentials were not provided."})
+                ]
+            ),
+            403: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostDeleteForbiddenError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Forbidden",
+                examples=[
+                    OpenApiExample(name="Forbidden", value={"detail": "You do not have permission to perform this action."})
+                ]
+            ),
+            404: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostDeleteNotFoundError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Not found",
+                examples=[
+                    OpenApiExample(name="Not found", value={"detail": "Not found."})
+                ]
+            )
         }
     )
     def delete(self, request, pk):
@@ -328,13 +452,17 @@ class PostSearchView(APIView):
             200: PostListSerializer(many=True),
             400: OpenApiResponse(
                 response=inline_serializer(
-                    name="SearchValidationError",
-                    fields={"q": serializers.ListField(child=serializers.CharField())}
+                    name="PostSearchValidationError",
+                    fields={
+                        "q": serializers.ListField(child=serializers.CharField(), required=False),
+                        "category": serializers.ListField(child=serializers.CharField(), required=False)
+                    }
                 ),
                 description="Bad Request",
                 examples=[
                     OpenApiExample(name="Missing q", value={"q": ["This field is required."]}),
-                    OpenApiExample(name="Too short q", value={"q": ["Search query must be at least 2 characters."]})
+                    OpenApiExample(name="Too short q", value={"q": ["Search query must be at least 2 characters."]}),
+                    OpenApiExample(name="Invalid category", value={"category": ["category must be an integer."]})
                 ]
             )
         }
@@ -394,8 +522,26 @@ class PostLikeView(APIView):
         description="Likes a post. If the user has already liked the post, it will be unliked.",
         responses={
             200: PostLikeSerializer,
-            401: OpenApiResponse(description="Unauthorized"),
-            404: OpenApiResponse(description="Not found")
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostLikeUnauthorizedError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(name="Unauthorized", value={"detail": "Authentication credentials were not provided."})
+                ]
+            ),
+            404: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostLikeNotFoundError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Not found",
+                examples=[
+                    OpenApiExample(name="Not found", value={"detail": "Not found."})
+                ]
+            )
         }
     )
     def post(self, request, pk):
@@ -419,8 +565,26 @@ class PostBookmarkView(APIView):
         description="Bookmarks a post. If the user has already bookmarked the post, it will be unbookmarked.",
         responses={
             200: PostBookmarkSerializer,
-            401: OpenApiResponse(description="Unauthorized"),
-            404: OpenApiResponse(description="Not found")
+            401: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostBookmarkUnauthorizedError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Unauthorized",
+                examples=[
+                    OpenApiExample(name="Unauthorized", value={"detail": "Authentication credentials were not provided."})
+                ]
+            ),
+            404: OpenApiResponse(
+                response=inline_serializer(
+                    name="PostBookmarkNotFoundError",
+                    fields={"detail": serializers.CharField()}
+                ),
+                description="Not found",
+                examples=[
+                    OpenApiExample(name="Not found", value={"detail": "Not found."})
+                ]
+            )
         }
     )
     def post(self, request, pk):
