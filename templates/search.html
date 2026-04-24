@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}Search | Blog UI{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <div class="hero search-hero">
+    <form action="/search/" method="GET" class="search-form-page" id="search-form">
+      <input type="text" name="q" id="search-input" value="{{ query|default:'' }}" class="search-input-page" autocomplete="off" placeholder="Enter keywords...">
+      <button type="submit" class="btn btn-primary" style="border-radius: 24px; padding: 12px 32px;">Search</button>
+    </form>
+    
+    <div class="filter-row">
+        <!-- Render categories dynamically filters -->
+        <select id="filter-category" class="filter-select">
+            <option value="">All categories</option>
+        </select>
+        
+        <select id="sort-order" class="filter-select">
+            <option value="-created_at">Latest</option>
+            <option value="created_at">Oldest</option>
+            <option value="-likes_count">Most Likes</option>
+        </select>
+    </div>
+  </div>
+
+  <div class="search-results-section mt-48">
+    <h2>Search results... <span id="result-count" class="muted text-xs"></span></h2>
+    
+    <!-- Loading and Results grid -->
+    <div id="loading" style="display: none; padding: 48px; text-align: center;">Loading...</div>
+    <div class="product-grid mt-24" id="search-results">
+        <!-- JS render -->
+    </div>
+  </div>
+</div>
+
+<style>
+.search-hero {
+    text-align: center;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.search-form-page {
+    display: flex;
+    gap: 12px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.search-input-page {
+    flex: 1;
+    background: #F5F5F5;
+    border: 1px solid #CACACB;
+    border-radius: 24px;
+    padding: 16px 24px;
+    font-family: inherit;
+    font-size: 20px;
+    color: var(--ink);
+    transition: all 0.2s ease;
+}
+
+.search-input-page:focus {
+    outline: none;
+    border-color: var(--ink);
+    background: #fff;
+    box-shadow: 0 0 0 1px var(--ink);
+}
+
+.filter-row {
+    display: flex;
+    gap: 16px;
+    max-width: 800px;
+    margin-top: 24px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.filter-select {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #CACACB;
+    border-radius: 12px;
+    font: inherit;
+    background: transparent;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/api.js' %}"></script>
+<script src="{% static 'js/search.js' %}"></script>
+{% endblock %}

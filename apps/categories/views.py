@@ -99,9 +99,6 @@ class CategoryViewSet(ViewSet):
         summary="Update Category",
         description="Updates an existing category name. Requires Admin privileges.",
         request=CategorySerializer,
-        parameters=[
-            OpenApiParameter("pk", OpenApiTypes.INT, location=OpenApiParameter.PATH, description="Category ID", required=True)
-        ],
         responses={
             200: CategorySerializer,
             400: OpenApiResponse(
@@ -170,9 +167,6 @@ class CategoryViewSet(ViewSet):
     @extend_schema(
         summary="Delete Category",
         description="Soft deletes a category. Only Admin can perform this. Cannot delete a category that currently has non-deleted posts.",
-        parameters=[
-            OpenApiParameter("pk", OpenApiTypes.INT, location=OpenApiParameter.PATH, description="Category ID", required=True)
-        ],
         responses={
             204: OpenApiTypes.NONE,
             400: OpenApiResponse(

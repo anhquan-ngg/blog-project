@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+{% block title %}Edit Post | Blog UI{% endblock %}
+
+{% block content %}
+<div class="pc-page">
+
+  <!-- Page Header -->
+  <header class="pc-header">
+    <p class="pc-header__eyebrow">WRITE</p>
+    <h1 class="pc-header__title">Edit Post</h1>
+    <p class="pc-header__sub">Update your knowledge to the world.</p>
+  </header>
+
+  <!-- Global error / success banner -->
+  <div id="pc-banner" class="pc-banner" role="alert" aria-live="polite" style="display:none"></div>
+
+  <form id="edit-post-form" class="pc-form" data-post-id="{{ pk }}" novalidate>
+
+    <!-- ── SECTION 1: Meta ─────────────────────────────────────────────── -->
+    <section class="pc-section">
+      <h2 class="pc-section__label">Post Details</h2>
+
+      <!-- Title -->
+      <div class="pc-field" id="field-title">
+        <label class="pc-field__label" for="post-title">Title <span class="pc-required">*</span></label>
+        <input
+          class="pc-input"
+          type="text"
+          id="post-title"
+          name="title"
+          maxlength="200"
+          placeholder="Enter an engaging title..."
+          autocomplete="off"
+          required
+        />
+        <div class="pc-field__meta">
+          <span class="pc-field__error" id="err-title"></span>
+          <span class="pc-char-count"><span id="title-count">0</span>/200</span>
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="pc-field" id="field-category">
+        <label class="pc-field__label" for="post-category">Category <span class="pc-required">*</span></label>
+        <div class="pc-select-wrap">
+          <select class="pc-input pc-select" id="post-category" name="category" required>
+            <option value="">— Select a category —</option>
+          </select>
+          <svg class="pc-select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <span class="pc-field__error" id="err-category"></span>
+      </div>
+
+      <!-- Tags -->
+      <div class="pc-field" id="field-tags">
+        <label class="pc-field__label">Tags <span class="pc-field__hint">(optional — select multiple)</span></label>
+        <div class="pc-tags-picker" id="tags-picker">
+          <div class="pc-tags-search-row">
+            <input class="pc-tags-search" id="tags-search" type="text" placeholder="Search tags..." autocomplete="off" />
+          </div>
+          <div class="pc-tags-dropdown" id="tags-dropdown">
+            <div class="pc-tags-loading" id="tags-loading">Loading tags…</div>
+          </div>
+          <div class="pc-tags-selected" id="tags-selected" aria-live="polite"></div>
+        </div>
+        <span class="pc-field__error" id="err-tags"></span>
+      </div>
+    </section>
+
+    <!-- ── SECTION 2: Content blocks ──────────────────────────────────── -->
+    <section class="pc-section">
+      <h2 class="pc-section__label">Content <span class="pc-required">*</span></h2>
+      <p class="pc-section__desc">Build your post by adding blocks. Each block is a paragraph, heading, or image.</p>
+
+      <!-- Block list -->
+      <div id="blocks-list" class="pc-blocks-list"></div>
+
+      <!-- Add block button -->
+      <button type="button" class="pc-add-block-btn" id="btn-add-block">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Block
+      </button>
+      <span class="pc-field__error" id="err-content"></span>
+    </section>
+
+    <!-- ── Submit ──────────────────────────────────────────────────────── -->
+    <div class="pc-form__actions">
+      <button type="submit" class="pc-btn pc-btn--primary" id="btn-submit">
+        <span id="btn-submit-label">Save Changes</span>
+        <svg id="btn-submit-spinner" class="pc-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<!-- ── Block type pill template (cloned by JS) ────────────────────────── -->
+<template id="tpl-block">
+  <div class="pc-block" data-block-index="">
+    <div class="pc-block__toolbar">
+      <!-- Type selector pills -->
+      <div class="pc-block__type-group" role="group" aria-label="Block type">
+        <button type="button" class="pc-type-pill pc-type-pill--active" data-type="paragraph">¶ Paragraph</button>
+        <button type="button" class="pc-type-pill" data-type="heading">H Heading</button>
+        <button type="button" class="pc-type-pill" data-type="image">🖼 Image</button>
+      </div>
+      <!-- Move / Remove -->
+      <div class="pc-block__controls">
+        <button type="button" class="pc-ctrl-btn pc-ctrl-btn--up" title="Move up" aria-label="Move block up">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+        <button type="button" class="pc-ctrl-btn pc-ctrl-btn--down" title="Move down" aria-label="Move block down">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <button type="button" class="pc-ctrl-btn pc-ctrl-btn--remove" title="Remove block" aria-label="Remove block">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Paragraph input ── -->
+    <div class="pc-block__body pc-block__body--paragraph" data-for="paragraph">
+      <textarea class="pc-block-textarea" rows="3" placeholder="Write a paragraph…"></textarea>
+    </div>
+
+    <!-- ── Heading input ── -->
+    <div class="pc-block__body pc-block__body--heading" data-for="heading" style="display:none">
+      <div class="pc-heading-row">
+        <div class="pc-select-wrap pc-select-wrap--sm">
+          <select class="pc-input pc-select pc-heading-level">
+            <option value="1">H1</option>
+            <option value="2" selected>H2</option>
+            <option value="3">H3</option>
+            <option value="4">H4</option>
+          </select>
+          <svg class="pc-select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <input class="pc-input pc-heading-text" type="text" placeholder="Heading text…" />
+      </div>
+    </div>
+
+    <!-- ── Image dropzone ── -->
+    <div class="pc-block__body pc-block__body--image" data-for="image" style="display:none">
+      <div class="pc-dropzone" data-state="idle">
+        <input class="pc-dropzone__input" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" />
+        <div class="pc-dropzone__idle">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="0"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <p>Drag &amp; drop image here or <span class="pc-dropzone__browse">browse</span></p>
+          <p class="pc-dropzone__hint">JPEG · PNG · WebP · Max 5 MB</p>
+        </div>
+        <div class="pc-dropzone__preview" style="display:none">
+          <img class="pc-dropzone__img" src="" alt="" />
+          <div class="pc-dropzone__info">
+            <span class="pc-dropzone__filename"></span>
+            <button type="button" class="pc-dropzone__remove">Remove</button>
+          </div>
+          <!-- upload progress -->
+          <div class="pc-upload-status" style="display:none">
+            <div class="pc-upload-bar"><div class="pc-upload-fill"></div></div>
+            <span class="pc-upload-label">Uploading…</span>
+          </div>
+        </div>
+        <div class="pc-dropzone__error pc-field__error" style="display:none"></div>
+      </div>
+      <!-- Caption + Alignment -->
+      <div class="pc-image-meta">
+        <input class="pc-input pc-image-caption" type="text" placeholder="Caption (optional)" />
+        <div class="pc-select-wrap pc-select-wrap--sm">
+          <select class="pc-input pc-select pc-image-align">
+            <option value="center">Center</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+          <svg class="pc-select-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<style>
+/* ════════════════════════════════════════════════════════════════════
+   POST EDIT — Nike Design System
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Page shell ── */
+.pc-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+  font-family: "Helvetica Now Text", Helvetica, Arial, sans-serif;
+  color: #111111;
+}
+
+/* ── Header ── */
+.pc-header { margin-bottom: 48px; }
+.pc-header__eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: #707072;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+.pc-header__title {
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.10;
+  letter-spacing: -1px;
+  margin: 0 0 12px;
+  font-family: "Helvetica Now Display Medium", Helvetica, Arial, sans-serif;
+}
+.pc-header__sub {
+  font-size: 16px;
+  line-height: 1.75;
+  color: #707072;
+  margin: 0;
+}
+
+/* ── Banner ── */
+.pc-banner {
+  padding: 14px 20px;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 32px;
+}
+.pc-banner--ok    { background: #F5F5F5; border-left: 3px solid #111111; color: #111111; }
+.pc-banner--error { background: #FFF5F5; border-left: 3px solid #D30005; color: #D30005; }
+
+/* ── Section ── */
+.pc-section { margin-bottom: 48px; }
+.pc-section__label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: #707072;
+  text-transform: uppercase;
+  border-bottom: 1px solid #E5E5E5;
+  padding-bottom: 10px;
+  margin: 0 0 24px;
+}
+.pc-section__desc {
+  font-size: 14px;
+  color: #707072;
+  margin: -16px 0 24px;
+  line-height: 1.6;
+}
+
+/* ── Fields ── */
+.pc-field { margin-bottom: 24px; }
+.pc-field__label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin-bottom: 8px;
+}
+.pc-field__hint   { font-size: 12px; font-weight: 400; color: #707072; }
+.pc-field__meta   { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.pc-field__error  { font-size: 12px; font-weight: 500; color: #D30005; }
+.pc-required      { color: #D30005; margin-left: 2px; }
+.pc-char-count    { font-size: 12px; color: #707072; font-weight: 500; }
+
+/* ── Base input ── */
+.pc-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: #F5F5F5;
+  border: 1.5px solid #CACACB;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: "Helvetica Now Text", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #111111;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+.pc-input::placeholder { color: #707072; }
+.pc-input:focus {
+  border-color: #111111;
+  box-shadow: 0 0 0 2px rgba(39,93,197,1);
+}
+.pc-input--error { border-color: #D30005 !important; }
+
+/* ── Select wrap ── */
+.pc-select-wrap   { position: relative; }
+.pc-select-wrap--sm { width: 90px; }
+.pc-select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 36px;
+}
+.pc-select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #707072;
+}
+
+/* ── Tags picker ── */
+.pc-tags-picker { position: relative; }
+.pc-tags-search-row { margin-bottom: 8px; }
+.pc-tags-search { width: 100%; box-sizing: border-box; }
+
+.pc-tags-dropdown {
+  max-height: 200px;
+  overflow-y: auto;
+  background: #FFFFFF;
+  border: 1.5px solid #CACACB;
+  border-radius: 8px;
+  display: none;
+}
+.pc-tags-dropdown.open { display: block; }
+
+.pc-tags-loading { padding: 12px 16px; font-size: 14px; color: #707072; }
+.pc-tag-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.pc-tag-option:hover { background: #F5F5F5; }
+.pc-tag-option input[type=checkbox] { accent-color: #111111; width: 16px; height: 16px; cursor: pointer; }
+
+.pc-tags-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  min-height: 0;
+}
+.pc-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #111111;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 30px;
+  letter-spacing: 0.03em;
+}
+.pc-tag-pill__remove {
+  background: none;
+  border: none;
+  color: #FFFFFF;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.pc-tag-pill__remove:hover { opacity: 1; }
+
+/* ── Blocks list ── */
+.pc-blocks-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+
+/* ── Single block card ── */
+.pc-block {
+  border: 1.5px solid #E5E5E5;
+  border-radius: 8px;
+  background: #FFFFFF;
+  transition: border-color 0.2s ease;
+}
+.pc-block:focus-within { border-color: #CACACB; }
+
+.pc-block__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #F5F5F5;
+  background: #FAFAFA;
+  border-radius: 8px 8px 0 0;
+}
+
+.pc-block__type-group { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.pc-type-pill {
+  border: 1.5px solid #CACACB;
+  background: transparent;
+  color: #707072;
+  border-radius: 30px;
+  padding: 4px 12px;
+  font-family: "Helvetica Now Text", Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.pc-type-pill:hover { border-color: #707072; color: #111111; }
+.pc-type-pill--active {
+  background: #111111;
+  border-color: #111111;
+  color: #FFFFFF;
+}
+
+.pc-block__controls { display: flex; gap: 4px; }
+.pc-ctrl-btn {
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid #E5E5E5;
+  border-radius: 18px;
+  background: transparent;
+  color: #707072;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.pc-ctrl-btn:hover { border-color: #CACACB; color: #111111; background: #F5F5F5; }
+.pc-ctrl-btn--remove:hover { color: #D30005; border-color: #D30005; background: #FFF5F5; }
+
+/* ── Block body ── */
+.pc-block__body { padding: 14px 14px 10px; }
+
+/* paragraph */
+.pc-block-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid #CACACB;
+  border-radius: 0;
+  padding: 6px 0;
+  font-family: "Helvetica Now Text", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: #111111;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.pc-block-textarea::placeholder { color: #707072; }
+.pc-block-textarea:focus { border-bottom-color: #111111; }
+
+/* heading */
+.pc-heading-row { display: flex; gap: 12px; align-items: center; }
+.pc-heading-text { flex: 1; }
+.pc-heading-level { padding: 10px 36px 10px 12px; }
+
+/* image */
+.pc-dropzone {
+  border: 1.5px dashed #CACACB;
+  border-radius: 0;
+  background: #FAFAFA;
+  padding: 24px;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+.pc-dropzone.dragover {
+  border-color: #111111;
+  background: #F5F5F5;
+}
+.pc-dropzone[data-state="uploaded"] { cursor: default; }
+
+.pc-dropzone__idle { pointer-events: none; }
+.pc-dropzone__idle svg { color: #CACACB; margin-bottom: 12px; }
+.pc-dropzone__idle p { font-size: 14px; color: #707072; margin: 0; line-height: 1.7; }
+.pc-dropzone__browse { color: #111111; font-weight: 500; text-decoration: underline; cursor: pointer; pointer-events: all; }
+.pc-dropzone__hint  { font-size: 12px !important; color: #9E9EA0 !important; margin-top: 4px !important; }
+
+.pc-dropzone__preview { text-align: left; }
+.pc-dropzone__img { max-height: 180px; max-width: 100%; border-radius: 0; display: block; margin: 0 auto 12px; }
+.pc-dropzone__info { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pc-dropzone__filename { font-size: 13px; font-weight: 500; color: #111111; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+.pc-dropzone__remove {
+  background: transparent;
+  border: 1.5px solid #CACACB;
+  border-radius: 30px;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #707072;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.pc-dropzone__remove:hover { border-color: #D30005; color: #D30005; }
+
+.pc-upload-status { margin-top: 10px; }
+.pc-upload-bar { background: #E5E5E5; height: 3px; border-radius: 30px; overflow: hidden; margin-bottom: 4px; }
+.pc-upload-fill { height: 100%; background: #111111; border-radius: 30px; width: 0%; transition: width 0.3s ease; }
+.pc-upload-label { font-size: 12px; color: #707072; font-weight: 500; }
+
+.pc-image-meta { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-top: 1px solid #F5F5F5; }
+.pc-image-caption { flex: 1; padding: 8px 12px; font-size: 14px; }
+.pc-image-align   { padding: 8px 36px 8px 12px; font-size: 14px; }
+
+/* ── Add block button ── */
+.pc-add-block-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px dashed #CACACB;
+  background: transparent;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-family: "Helvetica Now Text", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #707072;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  margin-top: 4px;
+}
+.pc-add-block-btn:hover { border-color: #111111; color: #111111; background: #FAFAFA; }
+
+/* ── Submit ── */
+.pc-form__actions { padding-top: 32px; border-top: 1px solid #E5E5E5; }
+.pc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 30px;
+  padding: 14px 36px;
+  font-family: "Helvetica Now Text", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.pc-btn--primary { background: #111111; color: #FFFFFF; }
+.pc-btn--primary:hover { background: #707072; }
+.pc-btn--primary:disabled { background: #E5E5E5; color: #9E9EA0; cursor: not-allowed; }
+
+.pc-spinner { animation: pc-spin 0.8s linear infinite; }
+@keyframes pc-spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/api.js"></script>
+<script src="/static/js/post_edit.js"></script>
+{% endblock %}

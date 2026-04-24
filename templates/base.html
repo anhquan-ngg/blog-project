@@ -1,0 +1,39 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Blog UI{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />    
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    <!-- Nike UI Top Navigation Bar -->
+    <header class="site-header" style="border: none; border-bottom: 1px solid var(--line); border-radius: 0; max-width: 100%; width: 100%; margin: 0; padding: 16px 5%; background: var(--bg); position: sticky; top: 0; z-index: 100; box-shadow: none;">
+      <a class="brand" href="/" style="font-family: 'Nike Futura ND', sans-serif; text-transform: uppercase; font-size: 24px; letter-spacing: -1px; font-weight: bold;">BLOG PROJECT</a>
+      <nav class="nav-links" style="align-items: center; gap: 24px;">
+        {% if user.is_authenticated %}
+        <a href="/profile/" class="nike-nav-link" style="border: none; padding: 0;">{{ user.username }}</a>
+        <a href="/profile/" class="nike-nav-link" style="border: none; padding: 0;">Profile</a>
+        <a href="#" onclick="window.logoutEvent(event)" class="nike-nav-link" style="border: none; padding: 0;">Logout</a>
+        {% else %}
+        <a href="/login/" class="nike-nav-link" style="border: none; padding: 0;">Sign In</a>
+        <a href="/register/" class="btn btn-primary" style="padding: 10px 24px; font-size: 14px; color: #ffffff !important;">Sign Up</a>
+        {% endif %}
+      </nav>
+    </header>
+
+    <main class="page-wrap" style="width: min(1040px, calc(100% - 32px)); margin: 40px auto; min-height: calc(100vh - 200px);">{% block content %}{% endblock %}</main>
+
+    <footer class="site-footer" style="border-top: 1px solid var(--line); margin-top: 64px;">
+      <p style="text-transform: uppercase; letter-spacing: 1px; font-size: 11px;">2026 Blog Project. All rights reserved.</p>
+    </footer>
+    {% block scripts %}
+     <script src="{% static 'js/api.js' %}"></script> 
+     <script src="{% static 'js/home.js' %}"></script>
+    {% endblock %}
+  </body>
+</html>

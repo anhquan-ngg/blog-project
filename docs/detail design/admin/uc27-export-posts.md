@@ -12,7 +12,8 @@
 Xuất toàn bộ (hoặc đã lọc) danh sách bài viết ra file CSV để tải về.  
 Chỉ Admin (`is_staff=True`) mới có quyền thực hiện.  
 Hỗ trợ lọc theo `category`, `from` (ngày bắt đầu), `to` (ngày kết thúc).  
-Trả về file download trực tiếp qua `StreamingHttpResponse(content_type="text/csv")` — không phải JSON.  
+**Return File** — `StreamingHttpResponse` với `Content-Type: text/csv` và `Content-Disposition: attachment`.
+  
 CSV hiện tại bao gồm thêm các trường hiển thị phục vụ moderation như `tags`, `content`, `likes_count`, `bookmarks_count`.
 
 ---

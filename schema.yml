@@ -1,0 +1,3572 @@
+openapi: 3.0.3
+info:
+  title: Blog API
+  version: 1.0.0
+  description: API documentation for Blog project
+paths:
+  /api/admin/posts/export/:
+    get:
+      operationId: admin_posts_export_retrieve
+      description: Export all (or filtered) posts to a CSV file for download. Only
+        Admin (`is_staff=True`) can perform this. Excludes soft deleted (`is_deleted=True`)
+        posts. Returns direct file download via StreamingHttpResponse.
+      summary: Export Posts to CSV
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: integer
+        description: Filter by Category ID
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: 'From date. Format: YYYY-MM-DD'
+      - in: query
+        name: to
+        schema:
+          type: string
+        description: 'To date. Format: YYYY-MM-DD'
+      tags:
+      - admin
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+              examples:
+                WithData:
+                  value: |-
+                    id,title,author_username,category_name,tags,content,likes_count,bookmarks_count,created_at
+                    1,Getting Started with DRF,johndoe,Backend,"drf, tutorial","[{""type"":""paragraph"",""data"":{""text"":""Hello""}}]",47,12,2024-01-14T10:00:00Z
+                    2,Advanced Serializers,johndoe,Backend,"drf, advanced","[{""type"":""image"",""data"":{""url"":""/media/files/img.jpg""}}]",23,9,2024-01-10T08:00:00Z
+                  summary: With Data
+                  description: CSV output with data
+                EmptyResult:
+                  value: |
+                    id,title,author_username,category_name,tags,content,likes_count,bookmarks_count,created_at
+                  summary: Empty Result
+                  description: Only header, no data rows
+          description: CSV file containing posts data (id, title, author_username,
+            category_name, tags, content, likes_count, bookmarks_count, created_at).
+            Encoded in utf-8-sig.
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportPostsToCSVError'
+              examples:
+                InvalidFromDate:
+                  value:
+                    from:
+                    - Invalid date format. Use YYYY-MM-DD.
+                  summary: Invalid from date
+                InvalidToDate:
+                  value:
+                    to:
+                    - Invalid date format. Use YYYY-MM-DD.
+                  summary: Invalid to date
+          description: Bad Request - Invalid date format
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportPostsToCSVUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportPostsToCSVForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden - User is not an admin
+  /api/admin/posts/import/:
+    post:
+      operationId: admin_posts_import_create
+      description: 'Import multiple posts from a CSV file. Expected columns: title,
+        content, category_name. Imported author is always the current authenticated
+        admin.'
+      summary: Import Posts from CSV
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportPostFromCSV'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportPostFromCSV'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportPostFromCSV'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Import stats (total_rows, imported, skipped, errors)
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPostsFromCSVError'
+              examples:
+                ErrorProcessingCSV:
+                  value:
+                    file:
+                    - 'Error processing CSV: <error details>'
+                  summary: Error processing CSV
+                InvalidFileError:
+                  value:
+                    file:
+                    - The submitted file is empty.
+                  summary: Invalid file error
+          description: Bad Request - Invalid or oversized file
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPostsToCSVUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPostsToCSVForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden - User is not an admin
+  /api/admin/users/:
+    get:
+      operationId: admin_users_retrieve
+      description: Return paginated list of users for admin dashboard.
+      summary: List Users (Admin)
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Number of users per page (max 100).
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Number of users to skip.
+      tags:
+      - admin
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUsersPaginatedResponse'
+          description: Paginated users list
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUsersUnauthorizedError'
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUsersForbiddenError'
+          description: Forbidden - User is not an admin
+  /api/admin/users/{id}/ban/:
+    post:
+      operationId: admin_users_ban_create
+      description: Ban a user account by setting its is_active status to False. Only
+        Admins can perform this action. You cannot ban yourself, another Admin, or
+        an already banned user.
+      summary: Ban User
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - admin
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BanUser'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BanUserErrorResponse'
+              examples:
+                CannotBanYourself:
+                  value:
+                    non_field_errors:
+                    - You cannot ban yourself.
+                  summary: Cannot ban yourself
+          description: Bad Request - Cannot ban yourself, another admin, or an already
+            banned user
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BanUserUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BanUserForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden - User is not an admin
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BanUserNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found - User does not exist
+  /api/admin/users/{id}/unban/:
+    post:
+      operationId: admin_users_unban_create
+      description: Unban a user account by setting its is_active status to True. Only
+        Admins can perform this action. You cannot unban an already active user.
+      summary: Unban User
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - admin
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BanUser'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnbanUserErrorResponse'
+              examples:
+                CannotUnbanActiveUser:
+                  value:
+                    non_field_errors:
+                    - User is already active.
+                  summary: Cannot unban active user
+          description: Bad Request - Cannot unban an already active user
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnbanUserUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnbanUserForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden - User is not an admin
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnbanUserNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found - User does not exist
+  /api/admin/users/export/:
+    get:
+      operationId: admin_users_export_retrieve
+      description: Export users to a CSV file. Filter by is_active, is_staff, from_date,
+        and to_date.
+      summary: Export Users to CSV
+      tags:
+      - admin
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: CSV file containing users data
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportUsersToCSVError'
+              examples:
+                InvalidFromDate:
+                  value:
+                    from:
+                    - Invalid date format. Use YYYY-MM-DD.
+                  summary: Invalid from date
+                InvalidIsActiveBoolean:
+                  value:
+                    is_active:
+                    - Value must be 'true' or 'false'.
+                  summary: Invalid is_active boolean
+          description: Bad Request - Invalid date format or boolean value
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportUsersToCSVUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportUsersToCSVForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden - User is not an admin
+  /api/admin/users/import/:
+    post:
+      operationId: admin_users_import_create
+      description: 'Import multiple users from a CSV file. Expected columns: username,
+        email, password, first_name, last_name.'
+      summary: Import Users from CSV
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportUserFromCSV'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImportUserFromCSV'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImportUserFromCSV'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: Import stats (total_rows, imported, skipped, errors)
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportUsersFromCSVError'
+              examples:
+                ErrorProcessingCSV:
+                  value:
+                    file:
+                    - 'Error processing CSV: <error details>'
+                  summary: Error processing CSV
+                InvalidFileError:
+                  value:
+                    file:
+                    - The submitted file is empty.
+                  summary: Invalid file error
+          description: Bad Request - Invalid or oversized file
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportUsersToCSVUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportUsersToCSVForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden - User is not an admin
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: Authenticates the user and returns a DRF Token (1 user - 1 token).
+      summary: Log In
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLoginResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLoginValidationError'
+              examples:
+                InvalidCredentialsOrBanned:
+                  value:
+                    non_field_errors:
+                    - Unable to log in with provided credentials.
+                  summary: Invalid credentials or banned account
+                MissingFields:
+                  value:
+                    username:
+                    - This field is required.
+                    password:
+                    - This field is required.
+                  summary: Missing fields
+          description: Bad Request
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: Logs out completely by removing the user's DRF Token from the system.
+        The token will be invalidated.
+      summary: Log Out
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          content:
+            application/json:
+              schema: null
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLogoutUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+                  summary: Missing or invalid token
+          description: Unauthorized
+  /api/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      description: Returns profile information of the authenticated user.
+      summary: View Current User Profile
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMeGetUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+    patch:
+      operationId: auth_me_partial_update
+      description: Partially updates the authenticated user's profile. Only `first_name`
+        and `last_name` can be changed (max 100 characters each).
+      summary: Update Current User Profile
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateCurrentUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateCurrentUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateCurrentUser'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMeUpdateValidationError'
+              examples:
+                FieldTooLong:
+                  value:
+                    first_name:
+                    - Ensure this field has no more than 100 characters.
+                  summary: Field too long
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMeUpdateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+  /api/auth/register/:
+    post:
+      operationId: auth_register_create
+      description: Creates a new user account. Validates input and saves to DB. Does
+        not return a token (requires calling /login/ afterwards).
+      summary: Sign Up
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Register'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRegisterValidationError'
+              examples:
+                ValidationErrors:
+                  value:
+                    username:
+                    - A user with that username already exists.
+                    email:
+                    - This email is already registered.
+                    password:
+                    - Password must be 8-50 characters and contain at least one letter
+                      and one digit.
+                    non_field_errors:
+                    - Passwords do not match.
+                  summary: Validation errors
+                MissingFields:
+                  value:
+                    username:
+                    - This field is required.
+                    email:
+                    - This field is required.
+                    password:
+                    - This field is required.
+                    password_confirm:
+                    - This field is required.
+                  summary: Missing fields
+          description: Bad Request
+  /api/categories/:
+    get:
+      operationId: categories_list
+      description: Returns a list of all categories including posts count. No authentication
+        required. No pagination.
+      summary: View Categories
+      tags:
+      - categories
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+          description: ''
+    post:
+      operationId: categories_create
+      description: Creates a new category in the system. Requires Admin privileges.
+        Returns 201 Created.
+      summary: Create Category
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Category'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Category'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Category'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryCreateValidationError'
+              examples:
+                DuplicateName:
+                  value:
+                    name:
+                    - category with this name already exists.
+                  summary: Name already exists
+                MissingName:
+                  value:
+                    name:
+                    - This field is required.
+                  summary: Missing name field
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryCreateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryCreateForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden
+  /api/categories/{id}/:
+    put:
+      operationId: categories_update
+      description: Updates an existing category name. Requires Admin privileges.
+      summary: Update Category
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Category'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Category'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Category'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryUpdateValidationError'
+              examples:
+                DuplicateName:
+                  value:
+                    name:
+                    - category with this name already exists.
+                  summary: Name already exists
+                MissingName:
+                  value:
+                    name:
+                    - This field is required.
+                  summary: Missing name field
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryUpdateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryUpdateForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryUpdateNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found
+    delete:
+      operationId: categories_destroy
+      description: Soft deletes a category. Only Admin can perform this. Cannot delete
+        a category that currently has non-deleted posts.
+      summary: Delete Category
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          content:
+            application/json:
+              schema: null
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryDeleteValidationError'
+              examples:
+                HasPosts:
+                  value:
+                    non_field_errors:
+                    - Cannot delete category 'Backend Development' because it (or
+                      its subcategories) has 28 active post(s).
+                  summary: Category has posts
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryDeleteUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryDeleteForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryDeleteNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found
+  /api/comments/{id}/:
+    patch:
+      operationId: comments_partial_update
+      description: Update comment content or change/remove attached image. Only author
+        can do this.
+      summary: Update Comment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - comments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateComment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateComment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateComment'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentUpdateValidationError'
+              examples:
+                ValidationError:
+                  value:
+                    content:
+                    - This field may not be blank.
+                  summary: Validation Error
+          description: Bad Request - Validation Error
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentUpdateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentUpdateForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden - You do not have permission
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentUpdateNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found - Comment does not exist
+    delete:
+      operationId: comments_destroy
+      description: Soft delete a comment (set is_deleted=True). Owner or Admin only.
+      summary: Delete Comment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - comments
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          content:
+            application/json:
+              schema: null
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDeleteUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDeleteForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden - You do not have permission
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDeleteNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found - Comment does not exist
+  /api/files/upload/:
+    post:
+      operationId: files_upload_create
+      description: Uploads an image to S3 and creates a File record. Limits to 5MB
+        and JPEG/PNG/WebP formats. Returns file_id and url.
+      summary: Upload Image
+      tags:
+      - files
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+              required:
+              - image
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+              examples:
+                SuccessExample:
+                  value:
+                    id: 15
+                    url: https://s3.amazonaws.com/bucket/uploads/1/abc123.jpg
+                    uploaded_at: '2024-01-16T08:30:00Z'
+                  summary: Successfully created file record
+          description: Created
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadValidationError'
+              examples:
+                InvalidFormat:
+                  value:
+                    image:
+                    - Only JPEG, PNG and WebP formats are accepted.
+                  summary: Invalid format
+                FileTooLarge:
+                  value:
+                    image:
+                    - Image must not exceed 5MB.
+                  summary: File too large
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+                  summary: Authentication credentials were not provided.
+          description: Unauthorized
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadServerError'
+              examples:
+                S3UploadError:
+                  value:
+                    detail: Failed to upload file. Please try again.
+                  summary: Failed to upload file to S3 or database
+          description: Internal Server Error
+  /api/me/bookmarks/:
+    get:
+      operationId: me_bookmarks_list
+      description: Returns a paginated list of posts the authenticated user has bookmarked,
+        ordered by most recently bookmarked first.
+      summary: View Bookmarked Posts
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page (max 100)
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+        description: Number of items to skip
+      tags:
+      - me
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostList'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBookmarksUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+  /api/me/liked/:
+    get:
+      operationId: me_liked_list
+      description: Returns a paginated list of posts the authenticated user has liked,
+        ordered by most recently liked first.
+      summary: View Liked Posts
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page (max 100)
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+        description: Number of items to skip
+      tags:
+      - me
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostList'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLikedUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+  /api/notifications/:
+    get:
+      operationId: notifications_retrieve
+      description: Lấy danh sách thông báo của user (phân trang). Các thông báo được
+        sắp xếp theo thời gian mới nhất trước (-created_at).
+      summary: View Notifications
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Number of results to return per page.
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: The initial index from which to return the results.
+      tags:
+      - notifications
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsPaginatedResponse'
+              examples:
+                SuccessExample:
+                  value:
+                    count: 2
+                    next: null
+                    previous: null
+                    results:
+                    - id: 42
+                      type: liked_post
+                      target_id: 105
+                      target_type: post
+                      actor_username: janedoe
+                      is_read: false
+                      created_at: '2026-04-14T10:00:00Z'
+                    - id: 41
+                      type: commented_post
+                      target_id: 78
+                      target_type: comment
+                      actor_username: bobsmith
+                      is_read: true
+                      created_at: '2026-04-13T15:30:00Z'
+                  summary: Paginated response
+          description: Paginated list of notifications
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListUnauthorizedError'
+              examples:
+                UnauthorizedExample:
+                  value:
+                    detail: Authentication credentials were not provided.
+                  summary: Authentication credentials were not provided.
+          description: Unauthorized.
+  /api/notifications/{id}/read/:
+    patch:
+      operationId: notifications_read_partial_update
+      description: Đánh dấu một thông báo cụ thể là đã đọc (is_read = True). Yêu cầu
+        Token.
+      summary: Mark Notification as Read
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - notifications
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationReadSuccess'
+              examples:
+                SuccessExample:
+                  value:
+                    detail: Notification marked as read.
+                  summary: Notification marked as read.
+          description: Notification marked as read.
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationMarkReadUnauthorizedError'
+              examples:
+                UnauthorizedExample:
+                  value:
+                    detail: Authentication credentials were not provided.
+                  summary: Authentication credentials were not provided.
+          description: Unauthorized.
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationMarkReadNotFoundError'
+              examples:
+                NotFoundExample:
+                  value:
+                    detail: Not found.
+                  summary: Notification not found.
+          description: Not found.
+  /api/posts/:
+    get:
+      operationId: posts_list
+      description: Returns a list of posts with like and bookmark counts. Authentication
+        not required. Supports filtering by category, author, tag, and ordering.
+      summary: View Posts
+      parameters:
+      - in: query
+        name: author
+        schema:
+          type: integer
+        description: Filter by author_id
+      - in: query
+        name: category
+        schema:
+          type: integer
+        description: Filter by category_id
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+        description: Number of items to skip
+      - in: query
+        name: ordering
+        schema:
+          type: string
+          default: -created_at
+        description: 'Sort by: created_at, -created_at, likes_count, -likes_count,
+          bookmarks_count, -bookmarks_count'
+      - in: query
+        name: tag
+        schema:
+          type: string
+        description: Filter by tag slug
+      tags:
+      - posts
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostListValidationError'
+              examples:
+                InvalidCategory:
+                  value:
+                    category:
+                    - category must be an integer.
+                  summary: Invalid category
+                InvalidAuthor:
+                  value:
+                    author:
+                    - author must be an integer.
+                  summary: Invalid author
+                InvalidOrdering:
+                  value:
+                    ordering:
+                    - 'Invalid ordering. Allowed values are: created_at, -created_at,
+                      likes_count, -likes_count, bookmarks_count, -bookmarks_count'
+                  summary: Invalid ordering
+          description: Validation error
+    post:
+      operationId: posts_create
+      description: Create a new post. The author is automatically assigned from the
+        logged-in user.
+      summary: Create Post
+      tags:
+      - posts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePost'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreatePost'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreatePost'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCreateValidationError'
+              examples:
+                ValidationError:
+                  value:
+                    title:
+                    - This field is required.
+                  summary: Validation Error
+          description: Validation error
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCreateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+  /api/posts/{id}/:
+    get:
+      operationId: posts_retrieve
+      description: Returns the full details of a post by ID. Includes resolving image
+        URLs within the content blocks.
+      summary: View Post Detail
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - posts
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetailNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not found
+          description: Not found
+    put:
+      operationId: posts_update
+      description: Updates all fields of an existing post. Only the author of the
+        post can perform this action.
+      summary: Update Post (Full)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - posts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePost'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UpdatePost'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UpdatePost'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostUpdateValidationError'
+              examples:
+                ValidationError:
+                  value:
+                    title:
+                    - This field is required.
+                  summary: Validation error
+          description: Validation error
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostUpdateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostUpdateForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostUpdateNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not found
+          description: Not found
+    patch:
+      operationId: posts_partial_update
+      description: Updates specific fields of an existing post. Only the author of
+        the post can perform this action.
+      summary: Update Post (Partial)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - posts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdatePost'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdatePost'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdatePost'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostPartialUpdateValidationError'
+              examples:
+                ValidationError:
+                  value:
+                    title:
+                    - This field is required.
+                  summary: Validation error
+          description: Validation error
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostPartialUpdateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostPartialUpdateForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostPartialUpdateNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not found
+          description: Not found
+    delete:
+      operationId: posts_destroy
+      description: Soft deletes a post by setting is_deleted to True. Only the author
+        or an Admin can perform this action.
+      summary: Delete Post
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - posts
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          content:
+            application/json:
+              schema: null
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDeleteUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDeleteForbiddenError'
+              examples:
+                Forbidden:
+                  value:
+                    detail: You do not have permission to perform this action.
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDeleteNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not found
+          description: Not found
+  /api/posts/{id}/bookmark/:
+    post:
+      operationId: posts_bookmark_create
+      description: Bookmarks a post. If the user has already bookmarked the post,
+        it will be unbookmarked.
+      summary: Bookmark Post
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - posts
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostBookmarkUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostBookmarkNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not found
+          description: Not found
+  /api/posts/{id}/comments/:
+    get:
+      operationId: posts_comments_list
+      description: Returns a list of top-level comments for the post, with nested
+        replies. No authentication required. Paginated by limit/offset.
+      summary: View Comments
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Số comment mỗi trang (default 20, max 100)
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Số comment bỏ qua (default 0)
+      tags:
+      - posts
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCommentList'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found - Post not found
+    post:
+      operationId: posts_comments_create
+      description: Create a new comment for the post. Supports replies (pass `parent_id`)
+        and attach images (`file_id`). Requires authentication.
+      summary: Create Comment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - posts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateComment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateComment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateComment'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentCreateValidationError'
+              examples:
+                ValidationError:
+                  value:
+                    content:
+                    - This field is required.
+                  summary: Validation Error
+                InvalidParentId:
+                  value:
+                    parent_id:
+                    - Invalid pk "999" - object does not exist.
+                  summary: Invalid parent_id
+          description: Bad Request - Validation Error
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentCreateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentCreateNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found - Post not found
+  /api/posts/{id}/like/:
+    post:
+      operationId: posts_like_create
+      description: Likes a post. If the user has already liked the post, it will be
+        unliked.
+      summary: Like Post
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - posts
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostLikeUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostLikeNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not found
+          description: Not found
+  /api/posts/{id}/related/:
+    get:
+      operationId: posts_related_list
+      description: Returns a list of posts in the same category as the current post,
+        excluding the current post itself. Ordered by likes count descending.
+      summary: View Related Posts
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 4
+        description: Number of related posts to return (4-10)
+      tags:
+      - posts
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RelatedPost'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelatedPostLimitError'
+              examples:
+                LimitError:
+                  value:
+                    detail: limit must be an integer, from 4 to 10
+                  summary: Limit error
+          description: Invalid limit
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelatedPostNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not found
+          description: Post not found
+  /api/posts/search/:
+    get:
+      operationId: posts_search_list
+      description: Full-text search for Vietnamese posts using keyword 'q'. Supports
+        filtering by category.
+      summary: Search Posts
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: integer
+        description: Filter search within category_id
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+        description: Number of items to skip
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search keyword (minimum 2 characters)
+        required: true
+      tags:
+      - posts
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostSearchValidationError'
+              examples:
+                MissingQ:
+                  value:
+                    q:
+                    - This field is required.
+                  summary: Missing q
+                TooShortQ:
+                  value:
+                    q:
+                    - Search query must be at least 2 characters.
+                  summary: Too short q
+                InvalidCategory:
+                  value:
+                    category:
+                    - category must be an integer.
+                  summary: Invalid category
+          description: Bad Request
+  /api/tags/:
+    get:
+      operationId: tags_list
+      description: Returns all tags. Supports search via 'q' parameter. No pagination.
+      summary: List tags
+      parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search tag by name (icontains)
+      tags:
+      - tags
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+          description: ''
+    post:
+      operationId: tags_create
+      description: Creates a new tag. Slug is automatically generated from name. Name
+        must be unique.
+      summary: Create tag
+      tags:
+      - tags
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Tag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Tag'
+        required: true
+      security:
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagCreateValidationError'
+              examples:
+                DuplicateName:
+                  value:
+                    name:
+                    - A tag with this name already exists.
+                  summary: Duplicate name
+                MissingName:
+                  value:
+                    name:
+                    - This field is required.
+                  summary: Missing name
+          description: Bad Request - Validation Error
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagCreateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+  /api/tags/{id}/:
+    patch:
+      operationId: tags_partial_update
+      description: Updates tag name. Slug will be regenerated. Name must be unique.
+      summary: Update tag
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - tags
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTag'
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagUpdateValidationError'
+              examples:
+                DuplicateName:
+                  value:
+                    name:
+                    - A tag with this name already exists.
+                  summary: Duplicate name
+                MissingName:
+                  value:
+                    name:
+                    - This field is required.
+                  summary: Missing name
+          description: Bad Request - Validation Error
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagUpdateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagUpdateNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found - Tag does not exist
+    delete:
+      operationId: tags_destroy
+      description: Performs a hard delete of the tag. All post-tag associations will
+        be deleted (cascade).
+      summary: Delete tag
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - tags
+      security:
+      - tokenAuth: []
+      responses:
+        '204':
+          content:
+            application/json:
+              schema: null
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagDeleteUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized - Token is missing or invalid
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagDeleteNotFoundError'
+              examples:
+                NotFound:
+                  value:
+                    detail: Not found.
+                  summary: Not Found
+          description: Not Found - Tag does not exist
+components:
+  schemas:
+    AdminUserList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        is_staff:
+          type: boolean
+          readOnly: true
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - first_name
+      - id
+      - is_active
+      - is_staff
+      - last_name
+      - username
+    AdminUsersForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    AdminUsersPaginatedResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserList'
+      required:
+      - count
+      - next
+      - previous
+      - results
+    AdminUsersUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    AuthorBrief:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+      required:
+      - id
+      - username
+    BanUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        detail:
+          type: string
+          readOnly: true
+      required:
+      - detail
+      - id
+      - username
+    BanUserErrorResponse:
+      type: object
+      properties:
+        non_field_errors:
+          type: array
+          items:
+            type: string
+      required:
+      - non_field_errors
+    BanUserForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    BanUserNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    BanUserUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        posts_count:
+          type: integer
+          readOnly: true
+        parent_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - posts_count
+      - slug
+    CategoryBrief:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+      - id
+      - name
+    CategoryCreateForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CategoryCreateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CategoryCreateValidationError:
+      type: object
+      properties:
+        name:
+          type: array
+          items:
+            type: string
+    CategoryDeleteForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CategoryDeleteNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CategoryDeleteUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CategoryDeleteValidationError:
+      type: object
+      properties:
+        non_field_errors:
+          type: array
+          items:
+            type: string
+    CategoryUpdateForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CategoryUpdateNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CategoryUpdateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CategoryUpdateValidationError:
+      type: object
+      properties:
+        name:
+          type: array
+          items:
+            type: string
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+        author:
+          $ref: '#/components/schemas/CommentAuthor'
+        image_url:
+          type: string
+          nullable: true
+          readOnly: true
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reply'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author
+      - content
+      - created_at
+      - id
+      - image_url
+      - replies
+      - updated_at
+    CommentAuthor:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+      required:
+      - id
+      - username
+    CommentCreateNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Not found.
+    CommentCreateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Authentication credentials were not provided.
+    CommentCreateValidationError:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            type: string
+        parent_id:
+          type: array
+          items:
+            type: string
+        file_id:
+          type: array
+          items:
+            type: string
+    CommentDeleteForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: You do not have permission to perform this action.
+    CommentDeleteNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Not found.
+    CommentDeleteUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Authentication credentials were not provided.
+    CommentListNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Not found.
+    CommentUpdateForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: You do not have permission to perform this action.
+    CommentUpdateNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Not found.
+    CommentUpdateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Authentication credentials were not provided.
+    CommentUpdateValidationError:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            type: string
+        file_id:
+          type: array
+          items:
+            type: string
+    CreateComment:
+      type: object
+      properties:
+        content:
+          type: string
+        file_id:
+          type: integer
+          nullable: true
+        parent_id:
+          type: integer
+          nullable: true
+      required:
+      - content
+    CreatePost:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        category:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: integer
+      required:
+      - category
+      - content
+      - title
+    CurrentUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+        is_staff:
+          type: boolean
+          readOnly: true
+          title: Staff status
+          description: Designates whether the user can log into this admin site.
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - first_name
+      - id
+      - is_active
+      - is_staff
+      - last_name
+      - username
+    ExportPostsToCSVError:
+      type: object
+      properties:
+        from:
+          type: array
+          items:
+            type: string
+        to:
+          type: array
+          items:
+            type: string
+    ExportPostsToCSVForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ExportPostsToCSVUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ExportUsersToCSVError:
+      type: object
+      properties:
+        is_active:
+          type: array
+          items:
+            type: string
+        is_staff:
+          type: array
+          items:
+            type: string
+        from:
+          type: array
+          items:
+            type: string
+        to:
+          type: array
+          items:
+            type: string
+    ExportUsersToCSVForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ExportUsersToCSVUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    FileResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          maxLength: 200
+        uploaded_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - id
+      - uploaded_at
+      - url
+    FileUploadServerError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    FileUploadUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    FileUploadValidationError:
+      type: object
+      properties:
+        image:
+          type: array
+          items:
+            type: string
+    ImportPostFromCSV:
+      type: object
+      properties:
+        file:
+          type: string
+          format: uri
+      required:
+      - file
+    ImportPostsFromCSVError:
+      type: object
+      properties:
+        file:
+          type: array
+          items:
+            type: string
+    ImportPostsToCSVForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ImportPostsToCSVUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ImportUserFromCSV:
+      type: object
+      properties:
+        file:
+          type: string
+          format: uri
+      required:
+      - file
+    ImportUsersFromCSVError:
+      type: object
+      properties:
+        file:
+          type: array
+          items:
+            type: string
+    ImportUsersToCSVForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    ImportUsersToCSVUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Login:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
+      - username
+    NotificationListUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    NotificationMarkReadNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    NotificationMarkReadUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    NotificationReadSuccess:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    NotificationsList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        target_id:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        target_type:
+          type: string
+          maxLength: 50
+        actor_username:
+          type: string
+          readOnly: true
+        post_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        is_read:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - actor_username
+      - created_at
+      - id
+      - is_read
+      - post_id
+      - target_id
+      - target_type
+      - type
+    NotificationsPaginatedResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationsList'
+      required:
+      - count
+      - next
+      - previous
+      - results
+    PaginatedCommentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+    PatchedTag:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedUpdateComment:
+      type: object
+      properties:
+        content:
+          type: string
+        file_id:
+          type: integer
+          nullable: true
+    PatchedUpdateCurrentUser:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+    PatchedUpdatePost:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        category:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: integer
+    PostBookmarkNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostBookmarkUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostCreateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostCreateValidationError:
+      type: object
+      properties:
+        title:
+          type: array
+          items:
+            type: string
+      required:
+      - title
+    PostDeleteForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostDeleteNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostDeleteUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: array
+          items: {}
+          readOnly: true
+        category:
+          $ref: '#/components/schemas/CategoryBrief'
+        author:
+          $ref: '#/components/schemas/AuthorBrief'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagBrief'
+        likes_count:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        bookmarks_count:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        is_liked:
+          type: boolean
+          readOnly: true
+        is_bookmarked:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author
+      - category
+      - content
+      - created_at
+      - id
+      - is_bookmarked
+      - is_liked
+      - tags
+      - title
+      - updated_at
+    PostDetailNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostLikeNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostLikeUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        thumbnail:
+          type: string
+          nullable: true
+          readOnly: true
+        category:
+          $ref: '#/components/schemas/CategoryBrief'
+        author:
+          $ref: '#/components/schemas/AuthorBrief'
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagBrief'
+        likes_count:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        bookmarks_count:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        is_liked:
+          type: boolean
+          readOnly: true
+        is_bookmarked:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author
+      - category
+      - created_at
+      - id
+      - is_bookmarked
+      - is_liked
+      - tags
+      - thumbnail
+      - title
+    PostListValidationError:
+      type: object
+      properties:
+        category:
+          type: array
+          items:
+            type: string
+        author:
+          type: array
+          items:
+            type: string
+        ordering:
+          type: array
+          items:
+            type: string
+    PostPartialUpdateForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostPartialUpdateNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostPartialUpdateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostPartialUpdateValidationError:
+      type: object
+      properties:
+        title:
+          type: array
+          items:
+            type: string
+      required:
+      - title
+    PostSearchValidationError:
+      type: object
+      properties:
+        q:
+          type: array
+          items:
+            type: string
+        category:
+          type: array
+          items:
+            type: string
+    PostUpdateForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostUpdateNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostUpdateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    PostUpdateValidationError:
+      type: object
+      properties:
+        title:
+          type: array
+          items:
+            type: string
+      required:
+      - title
+    Register:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+        password_confirm:
+          type: string
+          writeOnly: true
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - id
+      - password
+      - password_confirm
+      - username
+    RelatedPost:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        thumbnail:
+          type: string
+          nullable: true
+          readOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/CategoryBrief'
+          readOnly: true
+        author:
+          allOf:
+          - $ref: '#/components/schemas/AuthorBrief'
+          readOnly: true
+        likes_count:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        bookmarks_count:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author
+      - category
+      - created_at
+      - id
+      - thumbnail
+      - title
+    RelatedPostLimitError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    RelatedPostNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Reply:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+        author:
+          $ref: '#/components/schemas/CommentAuthor'
+        image_url:
+          type: string
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author
+      - content
+      - created_at
+      - id
+      - image_url
+      - updated_at
+    Tag:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - slug
+    TagBrief:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - id
+      - name
+      - slug
+    TagCreateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Authentication credentials were not provided.
+    TagCreateValidationError:
+      type: object
+      properties:
+        name:
+          type: array
+          items:
+            type: string
+    TagDeleteNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Not found.
+    TagDeleteUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Authentication credentials were not provided.
+    TagUpdateNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Not found.
+    TagUpdateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+          default: Authentication credentials were not provided.
+    TagUpdateValidationError:
+      type: object
+      properties:
+        name:
+          type: array
+          items:
+            type: string
+    TypeEnum:
+      enum:
+      - liked_post
+      - commented_post
+      - replied_comment
+      type: string
+      description: |-
+        * `liked_post` - Liked Post
+        * `commented_post` - Commented Post
+        * `replied_comment` - Replied Comment
+    UnbanUserErrorResponse:
+      type: object
+      properties:
+        non_field_errors:
+          type: array
+          items:
+            type: string
+      required:
+      - non_field_errors
+    UnbanUserForbiddenError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UnbanUserNotFoundError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UnbanUserUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UpdatePost:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        category:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: integer
+      required:
+      - category
+      - content
+      - title
+    UserBookmarksUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UserLikedUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UserLoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+      - token
+    UserLoginValidationError:
+      type: object
+      properties:
+        username:
+          type: array
+          items:
+            type: string
+        password:
+          type: array
+          items:
+            type: string
+        non_field_errors:
+          type: array
+          items:
+            type: string
+    UserLogoutUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UserMeGetUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UserMeUpdateUnauthorizedError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    UserMeUpdateValidationError:
+      type: object
+      properties:
+        first_name:
+          type: array
+          items:
+            type: string
+        last_name:
+          type: array
+          items:
+            type: string
+    UserRegisterValidationError:
+      type: object
+      properties:
+        username:
+          type: array
+          items:
+            type: string
+        email:
+          type: array
+          items:
+            type: string
+        password:
+          type: array
+          items:
+            type: string
+        password_confirm:
+          type: array
+          items:
+            type: string
+        non_field_errors:
+          type: array
+          items:
+            type: string
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"

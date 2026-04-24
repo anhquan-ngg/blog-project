@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Home | Blog UI{% endblock %} 
+{%block content %}
+<section
+  class="hero hero-home"
+  style="
+    margin-left: calc(-50vw + 50%);
+    width: 100vw;
+    background: var(--ink);
+    border: none;
+    padding: clamp(80px, 10vw, 160px) 24px;
+  "
+>
+  <div class="hero-content" style="max-width: 800px; margin: 0 auto">
+    <h1
+      class="display-text"
+      style="
+        font-size: clamp(4rem, 10vw, 8rem);
+        font-family: &quot;Nike Futura ND&quot;, sans-serif;
+        letter-spacing: -2px;
+      "
+    >
+      BLOG
+    </h1>
+    <p
+      class="lead"
+      style="
+        color: #cacacb;
+        font-family: &quot;Helvetica Now Text&quot;, sans-serif;
+        font-size: 1.25rem;
+      "
+    >
+      Updates on news, technology, and life lessons.
+    </p>
+
+    <!-- Search Form -->
+    <form
+      action="/search/"
+      method="GET"
+      class="search-form-home"
+      style="display: flex; gap: 8px; margin-top: 40px"
+    >
+      <input
+        type="text"
+        name="q"
+        placeholder="Search posts..."
+        autocomplete="off"
+        required
+        style="
+          flex: 1;
+          background: #f5f5f5;
+          border: 1.5px solid transparent;
+          border-radius: 24px;
+          padding: 14px 24px;
+          font-size: 16px;
+          outline: none;
+          transition: border-color 0.2s;
+        "
+        onfocus="
+          this.style.borderColor = 'var(--ink)';
+          this.style.background = '#fff';
+        "
+        onblur="
+          this.style.borderColor = 'transparent';
+          this.style.background = '#f5f5f5';
+        "
+      />
+      <button
+        type="submit"
+        class="btn btn-primary"
+        style="border-radius: 24px; padding: 14px 32px;"
+      >
+        Search
+      </button>
+    </form>
+  </div>
+</section>
+
+<section class="nav-categories mt-48">
+  <nav
+    class="category-bar"
+    id="category-list"
+    style="
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    "
+  >
+    <!-- Categories loaded via JS. We can style them using CSS pill classes. -->
+  </nav>
+</section>
+
+<section class="product-grid-section mt-48" id="latest">
+  <div
+    class="section-heading"
+    style="
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 32px;
+    "
+  >
+    <h2
+      class="display-text"
+      style="
+        font-size: clamp(1.5rem, 3vw, 3rem);
+        font-family: &quot;Nike Futura ND&quot;, sans-serif;
+      "
+    >
+      LATEST POSTS
+    </h2>
+  </div>
+  <div class="product-grid" id="post-grid">
+    <!-- Posts loaded via JS -->
+  </div>
+
+  <div
+    class="pagination-container"
+    style="display: flex; justify-content: center; gap: 12px; margin-top: 64px"
+  >
+    <!-- Pagination buttons loaded via JS -->
+  </div>
+</section>
+{% endblock %} {% block scripts %}
+<script src="{% static 'js/api.js' %}"></script>
+<script src="{% static 'js/home.js' %}"></script>
+<script>
+  // Quick override to inject pill styles into category links rendered by JS
+  const observer = new MutationObserver(() => {
+    document.querySelectorAll("#category-list a").forEach((a) => {
+      if (!a.classList.contains("pill-styled")) {
+        a.classList.add("pill-styled");
+        a.style.padding = "8px 20px";
+        a.style.border = "1.5px solid var(--line)";
+        a.style.borderRadius = "24px";
+        a.style.fontSize = "14px";
+        a.style.transition = "all 0.2s";
+        a.onmouseover = () => (a.style.borderColor = "var(--ink)");
+        a.onmouseout = () => {
+          if (!a.href.includes("category=") || a.href === window.location.href)
+            a.style.borderColor = "var(--line)";
+        };
+      }
+    });
+  });
+  const catList = document.getElementById("category-list");
+  if (catList) observer.observe(catList, { childList: true });
+</script>
+{% endblock %}

@@ -42,7 +42,17 @@ class PostCSVRowSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         author = self.context["author"]
-        category, _ = Category.objects.filter(is_deleted=False).get_or_create(name=validated_data["category_name"])
+        # Try to get existing non-deleted category first, or create new one
+        category = Category.objects.filter(name=validated_data["category_name"], is_deleted=False).first()
+        if not category:
+            # Check if there's a deleted category with same name and restore it, or create new
+            category, created = Category.objects.get_or_create(
+                name=validated_data["category_name"],
+                defaults={"is_deleted": False}
+            )
+            if not created and category.is_deleted:
+                category.is_deleted = False
+                category.save(update_fields=["is_deleted"])
         # Normalize CSV text into the same JSON block shape used by editor content.
         content_json = [{"type": "paragraph", "data": {"text": validated_data["content"]}}]
         return Post.objects.create(
@@ -52,7 +62,8 @@ class PostCSVRowSerializer(serializers.Serializer):
             author=author,
             is_deleted=False,
         )
-
+        
+        
 class ExportPostToCSVSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     title = serializers.CharField(max_length=200)

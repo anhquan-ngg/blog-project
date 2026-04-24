@@ -137,19 +137,6 @@ class TagDetailUpdateDeleteView(mixins.UpdateModelMixin, mixins.DestroyModelMixi
                     )
                 ]
             ),
-            403: OpenApiResponse(
-                description="Forbidden - You do not have permission",
-                response=inline_serializer(
-                    name="TagUpdateForbiddenError",
-                    fields={"detail": serializers.CharField(default="You do not have permission to perform this action.")}
-                ),
-                examples=[
-                    OpenApiExample(
-                        "Forbidden",
-                        value={"detail": "You do not have permission to perform this action."}
-                    )
-                ]
-            ),
             404: OpenApiResponse(
                 description="Not Found - Tag does not exist",
                 response=inline_serializer(
@@ -183,19 +170,6 @@ class TagDetailUpdateDeleteView(mixins.UpdateModelMixin, mixins.DestroyModelMixi
                     OpenApiExample(
                         "Unauthorized",
                         value={"detail": "Authentication credentials were not provided."}
-                    )
-                ]
-            ),
-            403: OpenApiResponse(
-                description="Forbidden - You do not have permission",
-                response=inline_serializer(
-                    name="TagDeleteForbiddenError",
-                    fields={"detail": serializers.CharField(default="You do not have permission to perform this action.")}
-                ),
-                examples=[
-                    OpenApiExample(
-                        "Forbidden",
-                        value={"detail": "You do not have permission to perform this action."}
                     )
                 ]
             ),

@@ -16,11 +16,18 @@ class Category(models.Model):
         indexes = [
             Index(fields=['parent_id'], name='idx_categories_parent_id'),
         ]
+        constraints = [
+            models.UniqueConstraint(fields=['parent_id', 'name'], name='unique_parent_name', nulls_distinct=False)
+        ]
 
     def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
         # Auto generate slug from name (if name is changed, slug will be updated)
-        self.slug = slugify(self.name)
+        base_slug = slugify(self.name)
+        if (self.parent_id): 
+            self.slug = f"{self.parent_id.slug}/{base_slug}"
+        else:
+            self.slug = base_slug
         super().save(*args, **kwargs)

@@ -14,6 +14,11 @@ class NotificationsListSerializerBase(serializers.ListSerializer):
 
 
 class NotificationsListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for listing notifications.
+    Callers MUST use `.select_related('actor')` on the queryset to avoid N+1 queries,
+    as the `actor_username` field requires access to the related actor object.
+    """
     actor_username = serializers.CharField(source='actor.username', read_only=True)
     post_id = serializers.SerializerMethodField()
     
@@ -23,7 +28,7 @@ class NotificationsListSerializer(serializers.ModelSerializer):
         fields = ['id', 'type', 'target_id', 'target_type', 'actor_username', 'post_id', 'is_read', 'created_at']
         read_only_fields = ['id', 'actor_username', 'is_read', 'created_at']
 
-    def get_post_id(self, obj):
+    def get_post_id(self, obj) -> int | None:
         if obj.target_type == 'post':
             return obj.target_id
         if obj.target_type == 'comment':

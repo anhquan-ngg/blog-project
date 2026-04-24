@@ -148,7 +148,8 @@ class NotificationReadView(APIView):
                     )
                 ]
             )
-        }
+        },
+        request=None
     )
     def patch(self, request, pk):
         try:

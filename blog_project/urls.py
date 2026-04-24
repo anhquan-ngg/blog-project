@@ -5,12 +5,27 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView
 )
+from blog_project.ui_views import (
+    home_page, login_page, register_page, 
+    post_detail_page, post_create_page, post_edit_page, 
+    search_page, profile_page, library_page, admin_portal_page
+)
 from apps.users.urls import me_urlpatterns
 import sys
 import os
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', home_page, name='ui-home'),
+    path('login/', login_page, name='ui-login'),
+    path('register/', register_page, name='ui-register'),
+    path('search/', search_page, name='ui-search'),
+    path('profile/', profile_page, name='ui-profile'),
+    path('library/', library_page, name='ui-library'),
+    path('admin-portal/', admin_portal_page, name='ui-admin-portal'),
+    path('post/create/', post_create_page, name='ui-post-create'),
+    path('post/<int:pk>/edit/', post_edit_page, name='ui-post-edit'),
+    path('post/<slug:slug>/', post_detail_page, name='ui-post-detail'),
     path('api/auth/', include('apps.users.urls')),
     path('api/me/', include(me_urlpatterns)),
     path('api/', include('apps.categories.urls')),

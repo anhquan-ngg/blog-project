@@ -1,4 +1,4 @@
-from django.db import models, transaction 
+from django.db import models, transaction
 from django.conf import settings
 from django.db.models import Index
 from django.db.models import Value, TextField
