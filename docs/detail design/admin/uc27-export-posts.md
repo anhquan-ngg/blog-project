@@ -13,24 +13,24 @@ Xuất toàn bộ (hoặc đã lọc) danh sách bài viết ra file CSV để t
 Chỉ Admin (`is_staff=True`) mới có quyền thực hiện.  
 Hỗ trợ lọc theo `category`, `from` (ngày bắt đầu), `to` (ngày kết thúc).  
 **Return File** — `StreamingHttpResponse` với `Content-Type: text/csv` và `Content-Disposition: attachment`.
-  
+
 CSV hiện tại bao gồm thêm các trường hiển thị phục vụ moderation như `tags`, `content`, `likes_count`, `bookmarks_count`.
 
 ---
 
 ## 2. Business Rules
 
-| #   | Rule                                                                              |
-| --- | --------------------------------------------------------------------------------- |
-| BR1 | Yêu cầu token — chỉ user đã đăng nhập mới gọi được                               |
-| BR2 | Chỉ Admin (`is_staff=True`) được export → `403` nếu không phải                   |
-| BR3 | Không bao gồm bài đã xóa mềm (`is_deleted=True`)                                 |
-| BR4 | `category` (optional) — lọc theo category ID                                     |
-| BR5 | `from` (optional) — lọc bài tạo từ ngày này trở đi. Format: `YYYY-MM-DD`         |
-| BR6 | `to` (optional) — lọc bài tạo đến ngày này. Format: `YYYY-MM-DD`                |
-| BR7 | `from` và `to` không hợp lệ → `400`                                              |
+| #   | Rule                                                                               |
+| --- | ---------------------------------------------------------------------------------- |
+| BR1 | Yêu cầu token — chỉ user đã đăng nhập mới gọi được                                 |
+| BR2 | Chỉ Admin (`is_staff=True`) được export → `403` nếu không phải                     |
+| BR3 | Không bao gồm bài đã xóa mềm (`is_deleted=True`)                                   |
+| BR4 | `category` (optional) — lọc theo category ID                                       |
+| BR5 | `from` (optional) — lọc bài tạo từ ngày này trở đi. Format: `YYYY-MM-DD`           |
+| BR6 | `to` (optional) — lọc bài tạo đến ngày này. Format: `YYYY-MM-DD`                   |
+| BR7 | `from` và `to` không hợp lệ → `400`                                                |
 | BR8 | Tên file trả về theo format `posts_YYYY-MM-DD-HH-MM-SS.csv` (timestamp lúc export) |
-| BR9 | Encode UTF-8 với BOM (`utf-8-sig`) để Excel mở đúng tiếng Việt                   |
+| BR9 | Encode UTF-8 với BOM (`utf-8-sig`) để Excel mở đúng tiếng Việt                     |
 
 ---
 
@@ -44,11 +44,11 @@ CSV hiện tại bao gồm thêm các trường hiển thị phục vụ moderat
 
 ### Query Parameters
 
-| Param      | Type    | Required | Mô tả                                 |
-| ---------- | ------- | -------- | ------------------------------------- |
-| `category` | integer | No       | Lọc theo Category ID                  |
-| `from`     | string  | No       | Từ ngày tạo. Format: `YYYY-MM-DD`     |
-| `to`       | string  | No       | Đến ngày tạo. Format: `YYYY-MM-DD`    |
+| Param      | Type    | Required | Mô tả                              |
+| ---------- | ------- | -------- | ---------------------------------- |
+| `category` | integer | No       | Lọc theo Category ID               |
+| `from`     | string  | No       | Từ ngày tạo. Format: `YYYY-MM-DD`  |
+| `to`       | string  | No       | Đến ngày tạo. Format: `YYYY-MM-DD` |
 
 ### Request mẫu
 
@@ -66,8 +66,23 @@ Authorization: Token <admin_token>
 2. **Permission Check** — `IsAdminUser` (is_staff=True) → `403` nếu không phải Admin.
 3. **Parse & Validate Query Params** — Validate `from`, `to` đúng format `YYYY-MM-DD` → `400` nếu sai.
 4. **Build Queryset** — Filter `is_deleted=False`, áp dụng `category`, `from`, `to` nếu có.
-5. **Generate CSV** — Stream queryset ra CSV writer theo thứ tự cột đã định (bao gồm JSON `content` đã resolve URL ảnh).
-6. **Return File** — `HttpResponse` với `Content-Type: text/csv` và `Content-Disposition: attachment`.
+5. **Generate CSV** — Stream queryset ra CSV writer theo thứ tự cột đã định, đồng thời resolve URL ảnh trong JSON `content`.
+
+Pseudocode (resolve image URLs):
+
+```
+content = json.loads(post.content)
+for block in content.get("blocks", []):
+  if block.get("type") == "image":
+    image_id = block.get("data", {}).get("image_id")
+    url = resolveImageUrl(image_id)  # query post_images by id
+    block["data"]["url"] = url if url else None
+resolved_content = json.dumps(content)
+```
+
+Edge cases: missing image id, DB lookup failure, and cache results for repeated ids.
+
+6. **Return File** — `StreamingHttpResponse` với `Content-Type: text/csv`, `Content-Disposition: attachment`, và response body được stream (không buffer toàn bộ file).
 
 ---
 
@@ -75,13 +90,13 @@ Authorization: Token <admin_token>
 
 ### Tables Affected
 
-| Table      | Operation | Note                                                   |
-| ---------- | --------- | ------------------------------------------------------ |
-| `posts`     | SELECT    | Lấy bài theo filter, chỉ `is_deleted=False`              |
-| `category`  | JOIN      | Lấy tên category                                         |
-| `auth_user` | JOIN      | Lấy username của tác giả                                 |
-| `tags`      | JOIN      | Lấy danh sách tag của bài                                |
-| `post_images` | SELECT  | Resolve URL ảnh trong block `content` kiểu `image`       |
+| Table         | Operation | Note                                               |
+| ------------- | --------- | -------------------------------------------------- |
+| `posts`       | SELECT    | Lấy bài theo filter, chỉ `is_deleted=False`        |
+| `category`    | JOIN      | Lấy tên category                                   |
+| `auth_user`   | JOIN      | Lấy username của tác giả                           |
+| `tags`        | JOIN      | Lấy danh sách tag của bài                          |
+| `post_images` | SELECT    | Resolve URL ảnh trong block `content` kiểu `image` |
 
 ### Query (Django ORM)
 
@@ -133,7 +148,7 @@ id,title,author_username,category_name,tags,content,likes_count,bookmarks_count,
 id,title,author_username,category_name,tags,content,likes_count,bookmarks_count,created_at
 ```
 
-*(Chỉ có header, không có dòng dữ liệu)*
+_(Chỉ có header, không có dòng dữ liệu)_
 
 ### 400 Bad Request — Sai format ngày
 
@@ -163,19 +178,19 @@ id,title,author_username,category_name,tags,content,likes_count,bookmarks_count,
 
 ## 7. Error Reference
 
-| HTTP  | Nguyên nhân                       | Cách fix                                     |
-| ----- | --------------------------------- | -------------------------------------------- |
-| `400` | `from` hoặc `to` sai format       | Dùng format `YYYY-MM-DD` (ví dụ: 2024-01-15) |
-| `401` | Thiếu token                       | Thêm header `Authorization: Token <token>`   |
-| `403` | Không phải Admin                  | Dùng tài khoản có `is_staff=True`            |
-| `500` | Lỗi database hoặc generate CSV    | Kiểm tra kết nối DB, xem server log          |
+| HTTP  | Nguyên nhân                    | Cách fix                                     |
+| ----- | ------------------------------ | -------------------------------------------- |
+| `400` | `from` hoặc `to` sai format    | Dùng format `YYYY-MM-DD` (ví dụ: 2024-01-15) |
+| `401` | Thiếu token                    | Thêm header `Authorization: Token <token>`   |
+| `403` | Không phải Admin               | Dùng tài khoản có `is_staff=True`            |
+| `500` | Lỗi database hoặc generate CSV | Kiểm tra kết nối DB, xem server log          |
 
 ---
 
 ## 8. Related Files
 
-| File                                                  | Mô tả                              |
-| ----------------------------------------------------- | ---------------------------------- |
-| [UC26 — Import Posts from CSV](uc26-import-posts.md)  | Import bài viết từ CSV             |
-| [UC28 — Export Users to CSV](uc28-export-users.md)    | Xuất danh sách user ra CSV         |
-| [README](../README.md)                                | API Documentation Index            |
+| File                                                 | Mô tả                      |
+| ---------------------------------------------------- | -------------------------- |
+| [UC26 — Import Posts from CSV](uc26-import-posts.md) | Import bài viết từ CSV     |
+| [UC28 — Export Users to CSV](uc28-export-users.md)   | Xuất danh sách user ra CSV |
+| [README](../README.md)                               | API Documentation Index    |

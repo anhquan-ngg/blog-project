@@ -298,7 +298,7 @@ class CommentUpdateDeleteAPIView(UpdateAPIView, DestroyAPIView):
         summary="Delete Comment",
         description="Soft delete a comment (set is_deleted=True). Owner or Admin only.",
         responses={
-            204: OpenApiTypes.NONE,
+            204: None,
             401: OpenApiResponse(
                 description="Unauthorized - Token is missing or invalid",
                 response=inline_serializer(

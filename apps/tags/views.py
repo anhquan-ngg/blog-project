@@ -159,7 +159,7 @@ class TagDetailUpdateDeleteView(mixins.UpdateModelMixin, mixins.DestroyModelMixi
         summary="Delete tag",
         description="Performs a hard delete of the tag. All post-tag associations will be deleted (cascade).",
         responses={
-            204: OpenApiTypes.NONE,
+            204: None,
             401: OpenApiResponse(
                 description="Unauthorized - Token is missing or invalid",
                 response=inline_serializer(

@@ -168,7 +168,7 @@ class CategoryViewSet(ViewSet):
         summary="Delete Category",
         description="Soft deletes a category. Only Admin can perform this. Cannot delete a category that currently has non-deleted posts.",
         responses={
-            204: OpenApiTypes.NONE,
+            204: None,
             400: OpenApiResponse(
                 response=inline_serializer(
                     name="CategoryDeleteValidationError",

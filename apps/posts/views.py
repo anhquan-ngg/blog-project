@@ -376,7 +376,7 @@ class PostDetailUpdateDeleteView(APIView):
         summary="Delete Post",
         description="Soft deletes a post by setting is_deleted to True. Only the author or an Admin can perform this action.",
         responses={
-            204: OpenApiTypes.NONE,
+            204: None,
             401: OpenApiResponse(
                 response=inline_serializer(
                     name="PostDeleteUnauthorizedError",

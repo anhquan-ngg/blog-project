@@ -1,4 +1,5 @@
 import re
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
@@ -30,6 +31,11 @@ class BanUserSerializer(serializers.ModelSerializer):
     
     def unban(self): 
         target = self.instance
+        request = self.context.get("request")
+        if not request or not request.user:
+            raise serializers.ValidationError({"non_field_errors": ["Request context is required."]})
+        if request.user.id == target.id:
+            raise serializers.ValidationError({"non_field_errors": ["You cannot unban yourself."]})
         if target.is_active: 
             raise serializers.ValidationError({"non_field_errors": ["User is already active."]})
         target.is_active = True
@@ -99,15 +105,37 @@ class UserCSVRowSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        batch_usernames = self.context.get("batch_usernames")
+        batch_emails = self.context.get("batch_emails")
+        if batch_usernames is not None:
+            normalized_username = (attrs.get("username") or "").strip().lower()
+            if normalized_username in batch_usernames:
+                raise serializers.ValidationError({"username": ["Duplicate username in CSV batch."]})
+        if batch_emails is not None:
+            normalized_email = (attrs.get("email") or "").strip().lower()
+            if normalized_email in batch_emails:
+                raise serializers.ValidationError({"email": ["Duplicate email in CSV batch."]})
+
         first_name = attrs.get('first_name') or ''
         last_name = attrs.get('last_name') or ''
         if len(first_name) > 100:
             raise serializers.ValidationError({'first_name': ['First name must be at most 100 characters.']})
         if len(last_name) > 100:
             raise serializers.ValidationError({'last_name': ['Last name must be at most 100 characters.']})
+
+        if batch_usernames is not None:
+            batch_usernames.add((attrs.get("username") or "").strip().lower())
+        if batch_emails is not None:
+            batch_emails.add((attrs.get("email") or "").strip().lower())
         return attrs
 
     def create(self, validated_data):
         password = validated_data.pop('password')
-        return User.objects.create_user(password=password, **validated_data)
+        try:
+            with transaction.atomic():
+                return User.objects.create_user(password=password, **validated_data)
+        except IntegrityError as exc:
+            raise serializers.ValidationError(
+                {"non_field_errors": ["Duplicate username or email detected (database constraint)."]}
+            ) from exc
      
