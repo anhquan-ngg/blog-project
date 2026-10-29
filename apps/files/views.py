@@ -4,7 +4,6 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser
 from drf_spectacular.utils import extend_schema, OpenApiResponse, inline_serializer, OpenApiExample, OpenApiParameter
-from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
 from .serializers import FileUploadSerializer, FileResponseSerializer

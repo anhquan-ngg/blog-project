@@ -1,7 +1,7 @@
-from apps.admin.views.post_views import ExportPostsToCSVView, ImportPostsFromCSVView
-from apps.admin.views.user_views import ExportUsersToCSVView, UnbanUserView, ImportUsersFromCSVView
+from apps.site_admin.views.post_views import ExportPostsToCSVView, ImportPostsFromCSVView
+from apps.site_admin.views.user_views import ExportUsersToCSVView, UnbanUserView, ImportUsersFromCSVView
 from django.urls.conf import path
-from apps.admin.views.user_views import BanUserView, AdminUsersListView
+from apps.site_admin.views.user_views import BanUserView, AdminUsersListView
 
 urlpatterns = [
     path('users/', AdminUsersListView.as_view(), name='list_users'),

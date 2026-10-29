@@ -90,11 +90,12 @@ file=<posts.csv>
 
 ### Tables Affected
 
-| Table       | Operation | Note                                          |
-| ----------- | --------- | --------------------------------------------- |
-| `category`  | SELECT    | Lookup `category_name` cho mỗi dòng CSV       |
-| `auth_user` | SELECT    | Lấy `request.user` từ phiên xác thực hiện tại |
-| `posts`     | INSERT    | Tạo bài viết mới cho mỗi dòng hợp lệ          |
+| Table      | Operation | Note                                    |
+| ---------- | --------- | --------------------------------------- |
+| `category` | SELECT    | Lookup `category_name` cho mỗi dòng CSV |
+| `posts`    | INSERT    | Tạo bài viết mới cho mỗi dòng hợp lệ    |
+
+> `request.user` được cung cấp bởi authentication middleware, không cần query DB riêng trong bước import.
 
 ### Query (Django ORM)
 
@@ -113,15 +114,23 @@ def import_posts(file, request_user):
     for row_num, row in enumerate(reader, start=2):  # start=2 (row 1 là header)
         total_rows += 1
         try:
+        title = (row["title"] or "").strip()
+        content = (row["content"] or "").strip()
+        if not title:
+          raise ValueError("title must not be blank")
+        if not content:
+          raise ValueError("content must not be blank")
+        if len(title) > 255:
+          raise ValueError("title must be at most 255 characters")
             category = Category.objects.get(name=row["category_name"])
             Post.objects.create(
-                title=row["title"],
-                content=row["content"],
+          title=title,
+          content=content,
                 category=category,
                 author=request_user,
             )
             imported += 1
-        except (Category.DoesNotExist, KeyError, Exception) as e:
+      except (Category.DoesNotExist, KeyError, ValueError) as e:
             errors.append({"row": row_num, "reason": str(e)})
 
     return {

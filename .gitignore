@@ -5,9 +5,7 @@ __pycache__/
 .pytest_cache/
 htmlcov/
 .coverage
-apps/*/migrations/*.py
-apps/*/migrations/*.pyc
-!apps/*/migrations/__init__.py
+# Keep schema migrations versioned so a fresh API database is reproducible.
 
 # Django
 *.log
@@ -27,6 +25,16 @@ ENV/
 env.bak/
 venv.bak/
 
+# React Native / Expo
+node_modules/
+.expo/
+mobile/dist/
+mobile/coverage/
+mobile/.env
+mobile/.env.local
+mobile/android/
+mobile/ios/
+
 # IDE / OS
 .idea/
 .vscode/
@@ -36,6 +44,8 @@ venv.bak/
 # Agents
 .tmp/
 *.md
+!README.md
+!mobile/README.md
 skill-creator/
 # execution/
 # directives/

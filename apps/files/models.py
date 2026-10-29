@@ -34,6 +34,6 @@ class File(models.Model):
             delete_image_from_s3(self.s3_key)
         except Exception as e:
             logger.error(f"Failed to delete image from S3 (Key: {self.s3_key}): {e}", exc_info=True)
-            
+            raise
         self.status = FileStatus.INACTIVE
         self.save(update_fields=['status'])

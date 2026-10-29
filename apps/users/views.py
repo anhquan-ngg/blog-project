@@ -131,7 +131,7 @@ class LogoutView(APIView):
         description="Logs out completely by removing the user's DRF Token from the system. The token will be invalidated.",
         request=None,
         responses={
-            204: OpenApiTypes.NONE,
+            204: None,
             401: OpenApiResponse(
                 response=inline_serializer(
                     name="UserLogoutUnauthorizedError",
@@ -155,7 +155,7 @@ class LogoutView(APIView):
     def post(self, request): 
         if request.auth is not None:
             request.auth.delete()
-        return Response({}, status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ── GET /api/auth/me/  &  PATCH /api/auth/me/ ────────────────────────────────

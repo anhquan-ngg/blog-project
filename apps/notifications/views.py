@@ -96,8 +96,12 @@ class NotificationsListView(APIView):
 
         paginator = CustomLimitOffsetPagination()
         result = paginator.paginate_queryset(qs, request)
-        serializer = NotificationsListSerializer(result, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        if result is not None:
+            serializer = NotificationsListSerializer(result, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        serializer = NotificationsListSerializer(qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class NotificationReadView(APIView):
     permission_classes = [IsAuthenticated]

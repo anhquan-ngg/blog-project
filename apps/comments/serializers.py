@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.db import transaction
+from django.utils import timezone
 from .models import Comment
 from apps.files.models import File, FileStatus
 from apps.comments.services import attach_file_to_comment, detach_file_from_comment
@@ -64,14 +65,16 @@ class CreateCommentSerializer(serializers.Serializer):
     def validate_parent_id(self, value):
         if value is None:
             return value
-        parent_qs = Comment.objects.filter(pk=value, is_deleted=False)
-        if not parent_qs.exists():
+        try:
+            parent = Comment.objects.get(pk=value, is_deleted=False)
+        except Comment.DoesNotExist:
             raise serializers.ValidationError("Comment not found.")
-        parent = parent_qs.first()
         if parent.parent is not None:
             raise serializers.ValidationError("Comment is a reply. Cannot nest deeper than level 2.")
         post_id = self.context.get('post_id')
-        if post_id and parent.post_id != post_id:
+        if not post_id:
+            raise serializers.ValidationError("post_id is required in context.")
+        if parent.post_id != post_id:
             raise serializers.ValidationError("Comment does not belong to this post.")
         return value
 
@@ -98,10 +101,12 @@ class UpdateCommentSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         with transaction.atomic():
-            save_fields = ['updated_at']
+            save_fields = []
+            should_save = False
             if 'content' in validated_data:
                 instance.content = validated_data['content']
                 save_fields.append('content')
+                should_save = True
 
             if 'file_id' in validated_data:
                 new_file_id = validated_data['file_id']
@@ -113,8 +118,11 @@ class UpdateCommentSerializer(serializers.Serializer):
                         attach_file_to_comment(new_file_id, instance)
                     except ValueError as e:
                         raise serializers.ValidationError({"file_id": str(e)}) from e
-            
-            if len(save_fields) > 1 or 'file_id' in validated_data:
+                should_save = True
+
+            if should_save:
+                instance.updated_at = timezone.now()
+                save_fields.append('updated_at')
                 instance.save(update_fields=save_fields)
 
             return instance

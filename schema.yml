@@ -423,7 +423,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImportUsersToCSVUnauthorizedError'
+                $ref: '#/components/schemas/ImportUsersFromCSVUnauthorizedError'
               examples:
                 Unauthorized:
                   value:
@@ -433,7 +433,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImportUsersToCSVForbiddenError'
+                $ref: '#/components/schemas/ImportUsersFromCSVForbiddenError'
               examples:
                 Forbidden:
                   value:
@@ -498,10 +498,7 @@ paths:
       - tokenAuth: []
       responses:
         '204':
-          content:
-            application/json:
-              schema: null
-          description: ''
+          description: No response body
         '401':
           content:
             application/json:
@@ -583,6 +580,90 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserMeUpdateUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+  /api/auth/me/bookmarks/:
+    get:
+      operationId: auth_me_bookmarks_list
+      description: Returns a paginated list of posts the authenticated user has bookmarked,
+        ordered by most recently bookmarked first.
+      summary: View Bookmarked Posts
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page (max 100)
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+        description: Number of items to skip
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostList'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserBookmarksUnauthorizedError'
+              examples:
+                Unauthorized:
+                  value:
+                    detail: Authentication credentials were not provided.
+          description: Unauthorized
+  /api/auth/me/liked/:
+    get:
+      operationId: auth_me_liked_list
+      description: Returns a paginated list of posts the authenticated user has liked,
+        ordered by most recently liked first.
+      summary: View Liked Posts
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 10
+        description: Number of items per page (max 100)
+      - in: query
+        name: offset
+        schema:
+          type: integer
+          default: 0
+        description: Number of items to skip
+      tags:
+      - auth
+      security:
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostList'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserLikedUnauthorizedError'
               examples:
                 Unauthorized:
                   value:
@@ -832,10 +913,7 @@ paths:
       - tokenAuth: []
       responses:
         '204':
-          content:
-            application/json:
-              schema: null
-          description: ''
+          description: No response body
         '400':
           content:
             application/json:
@@ -973,10 +1051,7 @@ paths:
       - tokenAuth: []
       responses:
         '204':
-          content:
-            application/json:
-              schema: null
-          description: ''
+          description: No response body
         '401':
           content:
             application/json:
@@ -1610,10 +1685,7 @@ paths:
       - tokenAuth: []
       responses:
         '204':
-          content:
-            application/json:
-              schema: null
-          description: ''
+          description: No response body
         '401':
           content:
             application/json:
@@ -2130,10 +2202,7 @@ paths:
       - tokenAuth: []
       responses:
         '204':
-          content:
-            application/json:
-              schema: null
-          description: ''
+          description: No response body
         '401':
           content:
             application/json:
@@ -2763,14 +2832,14 @@ components:
           type: array
           items:
             type: string
-    ImportUsersToCSVForbiddenError:
+    ImportUsersFromCSVForbiddenError:
       type: object
       properties:
         detail:
           type: string
       required:
       - detail
-    ImportUsersToCSVUnauthorizedError:
+    ImportUsersFromCSVUnauthorizedError:
       type: object
       properties:
         detail:
@@ -2818,6 +2887,10 @@ components:
       - detail
     NotificationsList:
       type: object
+      description: |-
+        Serializer for listing notifications.
+        Callers MUST use `.select_related('actor')` on the queryset to avoid N+1 queries,
+        as the `actor_username` field requires access to the related actor object.
       properties:
         id:
           type: integer

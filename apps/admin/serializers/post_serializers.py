@@ -1,3 +1,4 @@
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from apps.posts.models import Post
 from apps.categories.models import Category
@@ -41,16 +42,23 @@ class PostCSVRowSerializer(serializers.Serializer):
         return name
 
     def create(self, validated_data):
-        author = self.context["author"]
-        # Try to get existing non-deleted category first, or create new one
-        category = Category.objects.filter(name=validated_data["category_name"], is_deleted=False).first()
-        if not category:
-            # Check if there's a deleted category with same name and restore it, or create new
-            category, created = Category.objects.get_or_create(
-                name=validated_data["category_name"],
-                defaults={"is_deleted": False}
-            )
-            if not created and category.is_deleted:
+        author = self.context.get("author")
+        if not author:
+            raise serializers.ValidationError({"author": "Author context is required."})
+
+        category_name = validated_data["category_name"]
+        with transaction.atomic():
+            # Try to get existing category (including soft-deleted) first.
+            category = Category.objects.filter(name=category_name).first()
+            if not category:
+                try:
+                    category = Category.objects.create(name=category_name, is_deleted=False)
+                except IntegrityError:
+                    # Another transaction created it; fetch fresh.
+                    category = Category.objects.filter(name=category_name).first()
+            if not category:
+                raise serializers.ValidationError({"category_name": "Unable to resolve category."})
+            if category.is_deleted:
                 category.is_deleted = False
                 category.save(update_fields=["is_deleted"])
         # Normalize CSV text into the same JSON block shape used by editor content.

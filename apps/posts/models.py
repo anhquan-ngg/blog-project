@@ -56,13 +56,34 @@ class Post(models.Model):
             if isinstance(b, dict):
                 data = b.get("data", {})
                 if isinstance(data, dict):
-                    if "text" in data:
-                        res.append(str(data["text"]))
-                    elif "caption" in data:
-                        res.append(str(data["caption"]))
+                    if "text" in data and data.get("text") is not None:
+                        text_value = str(data.get("text")).strip()
+                        if text_value:
+                            res.append(text_value)
+                    elif "caption" in data and data.get("caption") is not None:
+                        caption_value = str(data.get("caption")).strip()
+                        if caption_value:
+                            res.append(caption_value)
         return " ".join(res)
 
+    @classmethod
+    def update_search_vector_for_queryset(cls, queryset):
+        """Rebuild search_vector for a queryset. Useful for bulk updates."""
+        for post in queryset:
+            content_text = cls._extract_text_from_blocks(post.content)
+            cls.objects.filter(pk=post.pk).update(
+                search_vector=(
+                    SearchVector(Value(post.title, output_field=TextField()), weight="A", config="vietnamese")
+                    +
+                    SearchVector(Value(content_text, output_field=TextField()), weight="B", config="vietnamese")
+                )
+            )
+
     def save(self, *args, **kwargs):
+        # Note: bulk_update/QuerySet.update bypass save; use update_search_vector_for_queryset().
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and not {"title", "content"}.intersection(update_fields):
+            return super().save(*args, **kwargs)
         with transaction.atomic():
             super().save(*args, **kwargs)
             
